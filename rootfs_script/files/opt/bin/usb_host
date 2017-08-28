@@ -1,0 +1,12 @@
+#!/bin/sh
+
+case $1 in
+    on)
+        echo 1 > /sys/bus/platform/drivers/usb20_otg/force_usb_mode
+        echo "SET USB MODE HOST"
+        ;;
+    off)
+        echo 0 > /sys/bus/platform/drivers/usb20_otg/force_usb_mode
+        echo "SET USB MODE DEVICE"
+        ;;
+esac

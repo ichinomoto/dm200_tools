@@ -1,0 +1,12 @@
+#!/bin/sh
+
+case $1 in
+  start)
+    echo 1 > /sys/bus/platform/drivers/usb20_otg/force_usb_mode
+  ;;
+  stop)
+
+  ;;
+esac
+
+exit 0

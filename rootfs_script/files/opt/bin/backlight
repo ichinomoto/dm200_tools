@@ -1,0 +1,3 @@
+#!/bin/sh
+
+echo $1 > /sys/class/backlight/rk28_bl/brightness

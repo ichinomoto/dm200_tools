@@ -1,0 +1,38 @@
+#!/bin/sh
+
+SETTING_FILE=/etc/wpa_supplicant/wpa_supplicant.conf
+SETTING_FILE_TMP=/tmp/wpa_supplicant.conf
+
+if [ ! -f $SETTING_FILE ] && [ -e $SETTING_FILE_TMP ];then
+    SETTING_FILE=$SETTING_FILE_TMP
+fi
+
+if [ -n "$2" ];then
+    SETTING_FILE=$2
+fi
+
+case $1 in
+    on)
+        if [ -e /tmp/wifion ]; then
+            echo "already WiFi enabled"
+            exit 1
+        fi
+        touch /tmp/wifion
+
+        echo 1 > /sys/class/rkwifi/driver
+
+        sleep 3
+
+        iwconfig wlan0 power off
+        wpa_supplicant -iwlan0 -Dnl80211,wext -c${SETTING_FILE} &
+        ;;
+    off)
+        killall wpa_supplicant
+        ifconfig wlan0 down
+        rm /tmp/wifion
+        if [ ! -e /tmp/bton ]; then
+            echo 0 > /sys/class/rkwifi/driver
+        fi
+        echo "WiFi switch OFF"
+        ;;
+esac

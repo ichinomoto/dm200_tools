@@ -1,0 +1,13 @@
+#!/bin/sh
+
+if [ -e /tmp/bton ]; then
+  /opt/bin/bt_switch off
+fi
+
+if [ -e /tmp/wifion ]; then
+  /opt/bin/wifi_switch off
+fi
+
+sleep 3
+
+echo mem > /sys/power/state

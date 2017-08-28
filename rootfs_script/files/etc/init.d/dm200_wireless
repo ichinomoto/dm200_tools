@@ -1,0 +1,27 @@
+#!/bin/sh
+
+BT_MAC=`cat /opt/sys_info/bt_mac.dat`
+WIFI_SETTING_FILE=/mnt/vfat/settings/wpa_supplicant.conf
+
+case $1 in
+  start)
+    # WiFi firmware
+    echo "/opt/etc/firmware/fw_RK901a2.bin" > /sys/module/bcmdhd/parameters/firmware_path
+    echo "/opt/etc/firmware/nvram_AP6210.txt" > /sys/module/bcmdhd/parameters/nvram_path
+
+    # WiFi/bt power on
+#    echo 1 > /sys/class/rkwifi/driver
+
+    # WiFi power management on
+#    /sbin/iwconfig wlan0 power on
+
+    # copy wpa_supplicant.conf
+    if [ -f $WIFI_SETTING_FILE ];then
+        cp $WIFI_SETTING_FILE /tmp/wpa_supplicant.conf
+    fi
+  ;;
+  stop)
+  ;;
+esac
+
+exit 0
