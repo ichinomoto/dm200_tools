@@ -1,0 +1,11 @@
+kernel/drivers/video/sysfillrect.ko
+kernel/drivers/video/syscopyarea.ko
+kernel/drivers/video/sysimgblt.ko
+kernel/drivers/gpu/drm/drm_kms_helper.ko
+kernel/drivers/gpu/drm/drm.ko
+kernel/drivers/gpu/drm/drm_usb.ko
+kernel/drivers/gpu/drm/udl/udl.ko
+kernel/drivers/gpu/drm/mali/mali_drm.ko
+kernel/drivers/gpu/arm/mali400/mali/mali.ko
+kernel/drivers/gpu/arm/mali400/ump/ump.ko
+kernel/drivers/i2c/algos/i2c-algo-bit.ko

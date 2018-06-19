@@ -1,0 +1,10 @@
+#!/bin/sh
+
+case $1 in
+  start)
+    /sbin/depmod -a
+    rm /etc/rc3.d/S10firstboot
+  ;;
+esac
+
+exit 0
