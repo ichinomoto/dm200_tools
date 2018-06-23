@@ -10,4 +10,5 @@ fi
 
 sleep 3
 
-echo mem > /sys/power/state
+#echo mem > /sys/power/state
+systemctl suspend
