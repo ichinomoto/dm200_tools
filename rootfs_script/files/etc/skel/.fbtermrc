@@ -42,4 +42,4 @@ screen-rotate=0
 input-method=
 
 # treat ambiguous width characters as wide
-#ambiguous-wide=yes
+ambiguous-wide=yes

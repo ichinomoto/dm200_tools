@@ -15,7 +15,7 @@ echo '#XKBOPTIONS="ctrl:nocaps"' >> /etc/default/keyboard
 #echo 'XKBMODEL="pc105"' > /etc/default/keyboard
 #echo 'XKBLAYOUT="us"' >> /etc/default/keyboard
 #echo 'XKBOPTIONS="ctrl:nocaps"' >> /etc/default/keyboard
-
+echo mali_drm >> /etc/modules
 
 # write source.list
 DISTRIBUTION=`cat /etc/issue | awk '{print $1}'`
@@ -107,36 +107,37 @@ echo "set dm200 passwd"
 passwd dm200
 
 
-# .xinitrc
-cat << \EOT >> /home/dm200/.xinitrc
-export LANG=ja_JP.UTF-8
-export GTK_IM_MODULE=ibus
-export XMODIFIERS=@im=ibus
-export QT_IM_MODULE=ibus
-
-EOT
+## .xinitrc
 #cat << \EOT >> /home/dm200/.xinitrc
 #export LANG=ja_JP.UTF-8
-#export GTK_IM_MODULE=fcitx
-#export XMODIFIERS=@im=fcitx
-#export QT_IM_MODULE=fcitx
+#export GTK_IM_MODULE=ibus
+#export XMODIFIERS=@im=ibus
+#export QT_IM_MODULE=ibus
 #
 #EOT
-
-#echo "ibus-daemon -drx&" >> /home/dm200/.xinitrc
-echo "exec startxfce4" >> /home/dm200/.xinitrc
-chown dm200:dm200 /home/dm200/.xinitrc
+##cat << \EOT >> /home/dm200/.xinitrc
+##export LANG=ja_JP.UTF-8
+##export GTK_IM_MODULE=fcitx
+##export XMODIFIERS=@im=fcitx
+##export QT_IM_MODULE=fcitx
+##
+##EOT
+#
+##echo "ibus-daemon -drx&" >> /home/dm200/.xinitrc
+#echo "exec startxfce4" >> /home/dm200/.xinitrc
+#chown dm200:dm200 /home/dm200/.xinitrc
 
 # add auto fbterm setting
 cat << \EOT >> /home/dm200/.bashrc
 
-alias fbterm="LANG=ja_JP.UTF-8 fbterm"
+alias fbterm="LANG=ja_JP.UTF-8 fbterm -- uim-fep"
 
-case "$TERM" in
-  linux*)
-    LANG=ja_JP.UTF-8 fbterm -- uim-fep
-	;;
-esac
+# If you want to auto launch fbturm at login time, uncomment here.
+#case "$TERM" in
+#  linux*)
+#    LANG=ja_JP.UTF-8 fbterm -- uim-fep
+#	;;
+#esac
 EOT
 
 # network config
