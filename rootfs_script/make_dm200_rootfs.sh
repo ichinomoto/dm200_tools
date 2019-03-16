@@ -125,9 +125,9 @@ fi
     wget https://github.com/armbian/firmware/raw/master/ap6210/bcm20710a1.hcd -O $ROOTFS/opt/etc/firmware/bcm20710a1.hcd
     wget https://raw.githubusercontent.com/armbian/firmware/master/ap6210/nvram_ap6210.txt -O $ROOTFS/opt/etc/firmware/nvram_AP6210.txt
     wget https://github.com/rockchip-linux/rk-rootfs-build/raw/master/overlay-firmware/system/etc/firmware/nvram_AP6210.txt -O $ROOTFS/opt/etc/firmware/nvram_AP6210.txt
-    wget https://github.com/rockchip-linux/rk-rootfs-build/raw/master/overlay-firmware/system/etc/firmware/fw_RK901a2.bin -O $ROOTFS/opt/etc/firmware/fw_RK901a2.bin
-    wget https://github.com/rockchip-linux/rk-rootfs-build/raw/master/overlay-firmware/system/etc/firmware/fw_RK901a2_apsta.bin -O $ROOTFS/opt/etc/firmware/fw_RK901a2_apsta.bin
-    wget https://github.com/rockchip-linux/rk-rootfs-build/raw/master/overlay-firmware/system/etc/firmware/fw_RK901a2_p2p.bin -O $ROOTFS/opt/etc/firmware/fw_RK901a2_p2p.bin
+    wget https://github.com/rockchip-linux/rk-rootfs-build/raw/36dab96a05b49d9af909e0d7da5322f0cd55a60d/overlay-firmware/system/etc/firmware/fw_RK901a2.bin -O $ROOTFS/opt/etc/firmware/fw_RK901a2.bin
+    wget https://github.com/rockchip-linux/rk-rootfs-build/raw/36dab96a05b49d9af909e0d7da5322f0cd55a60d/overlay-firmware/system/etc/firmware/fw_RK901a2_apsta.bin -O $ROOTFS/opt/etc/firmware/fw_RK901a2_apsta.bin
+    wget https://github.com/rockchip-linux/rk-rootfs-build/raw/36dab96a05b49d9af909e0d7da5322f0cd55a60d/overlay-firmware/system/etc/firmware/fw_RK901a2_p2p.bin -O $ROOTFS/opt/etc/firmware/fw_RK901a2_p2p.bin
 
 if [ -e ./initial_settings.sh ]; then
     cp initial_settings.sh $ROOTFS/tmp/
