@@ -24,7 +24,9 @@ SERVER=http://ftp.debian.org/debian/
 #PACKAGE=apt-transport-https,apt-utils,ca-certificates,debian-archive-keyring,vim-tiny,bluetooth,netbase,net-tools,wireless-tools,console-setup,sudo,isc-dhcp-client,wpasupplicant,openssh-server,iputils-ping,dnsutils,psmisc,locales,fbterm,uim-fep,uim-anthy,fonts-migmix,tmux
 
 # stretch Debian9
-VERSION=stretch
+#VERSION=stretch
+VERSION=buster
+CACHE_DIR=`pwd`/cache/$VERSION
 COMPONENTS=main,contrib,non-free
 # base
 PACKAGE=apt-transport-https,apt-utils,ca-certificates,debian-archive-keyring,systemd,dbus,systemd-sysv,vim-tiny,unzip,bzip2,libcap2-bin
@@ -82,8 +84,11 @@ fi
 # make rootfs dir
 mkdir $ROOTFS
 
+# make debootstrap cache dir
+mkdir $CACHE_DIR
+
 # debootstrap
-qemu-debootstrap --arch=armhf --variant=$VARIANT --components=$COMPONENTS --include=$PACKAGE $VERSION $ROOTFS $SERVER
+qemu-debootstrap --arch=armhf --variant=$VARIANT --components=$COMPONENTS --include=$PACKAGE --cache-dir=$CACHE_DIR $VERSION $ROOTFS $SERVER
 
 # copy additional scripts
 if [ -e $COPY_FILES ]; then
