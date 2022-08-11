@@ -1,0 +1,16 @@
+#!/bin/sh
+#mount -t proc none /proc
+#mount -t sysfs none /sys
+/sbin/mdev -s
+
+if [ -b /dev/mmcblk1p1 ]; then
+    mkdir -p /mnt/sd
+    mount -t vfat -o ro,sync,dirsync,noatime /dev/mmcblk1p1 /mnt/sd
+    if [ -f /mnt/sd/_sdboot.sh ]; then
+        cp /mnt/sd/_sdboot.sh /tmp/_sdboot.sh
+        umount /mnt/sd
+        /tmp/_sdboot.sh &
+    else
+        umount /mnt/sd
+    fi
+fi
