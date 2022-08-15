@@ -8,14 +8,20 @@ locale-gen
 update-locale
 rm /etc/localtime
 ln -s /usr/share/zoneinfo/Asia/Tokyo /etc/localtime
-timedatectl set-local-rtc 1
+
+# keyboard layout
 echo 'XKBMODEL="jp106"' > /etc/default/keyboard
 echo 'XKBLAYOUT="jp"' >> /etc/default/keyboard
 echo '#XKBOPTIONS="ctrl:nocaps"' >> /etc/default/keyboard
 #echo 'XKBMODEL="pc105"' > /etc/default/keyboard
 #echo 'XKBLAYOUT="us"' >> /etc/default/keyboard
 #echo 'XKBOPTIONS="ctrl:nocaps"' >> /etc/default/keyboard
+
+# mali module
+echo drm >> /etc/modules
 echo mali_drm >> /etc/modules
+echo ump >> /etc/modules
+echo mali >> /etc/modules
 
 # write source.list
 DISTRIBUTION=`cat /etc/issue | awk '{print $1}'`
@@ -23,16 +29,18 @@ UBUNTU_VERSINO=`cat /etc/issue | awk '{print $2}'`
 VERSION=`cat /etc/issue | awk '{print $3}'`
 if [ ${DISTRIBUTION} = "Debian" ]; then
   if [ ${VERSION} = "8" ]; then
-    echo "deb http://ftp.jp.debian.org/debian/ jessie main contrib non-free" > /etc/apt/sources.list
-    echo "deb http://security.debian.org/ jessie/updates main contrib non-free" >> /etc/apt/sources.list
-    echo "deb http://ftp.jp.debian.org/debian/ jessie-updates main contrib non-free" >> /etc/apt/sources.list
-    echo "deb http://ftp.jp.debian.org/debian/ jessie-backports main contrib non-free" >> /etc/apt/sources.list
+    CODE_NAME=jessie
   elif [ ${VERSION} = "9" ]; then
-    echo "deb http://ftp.jp.debian.org/debian/ stretch main contrib non-free" > /etc/apt/sources.list
-    echo "deb http://security.debian.org/ stretch/updates main contrib non-free" >> /etc/apt/sources.list
-    echo "deb http://ftp.jp.debian.org/debian/ stretch-updates main contrib non-free" >> /etc/apt/sources.list
-    echo "deb http://ftp.jp.debian.org/debian/ stretch-backports main contrib non-free" >> /etc/apt/sources.list
+    CODE_NAME=stretch
+  elif [ ${VERSION} = "10" ]; then
+    CODE_NAME=buster
+  elif [ ${VERSION} = "11" ]; then
+    CODE_NAME=bullseye
   fi
+    echo "deb http://deb.debian.org/debian/ $CODE_NAME main contrib non-free" > /etc/apt/sources.list
+    echo "deb http://security.debian.org/debian-security $CODE_NAME-security main contrib non-free" >> /etc/apt/sources.list
+    echo "deb http://deb.debian.org/debian/ $CODE_NAME-updates main contrib non-free" >> /etc/apt/sources.list
+    #echo "deb http://deb.debian.org/debian $CODE_NAME-backports main contrib non-free" > /etc/apt/sources.list
 elif [ ${DISTRIBUTION} = "Ubuntu" ]; then
   if [ ${UBUNTU_VERSINO} = "16.04" ]; then
     echo "deb http://jp.archive.ubuntu.com/ubuntu-ports/ xenial main restricted" > /etc/apt/sources.list
@@ -46,7 +54,7 @@ fi
 
 
 # make mount point
-mkdir /mnt/vfat
+mkdir /mnt/sd
 
 # write fstab
 echo "proc            /proc           proc    nodev,nosuid,noexec                         0   0" > /etc/fstab
@@ -55,8 +63,7 @@ echo "devpts          /dev/pts        devpts  defaults                          
 echo "/dev/mmcblk0p11 /opt/sys_info   ext4    ro                                          0   0" >> /etc/fstab
 echo "/dev/mmcblk1p2  /               ext4    errors=remount-ro                           0   1" >> /etc/fstab
 echo "/dev/mmcblk1p3  none            swap    sw                                          0   0" >> /etc/fstab
-#echo "/dev/mmcblk1p1  /mnt/vfat       vfat    user,noauto,rw,sync,dirsync,noatime,utf8    0   0" >> /etc/fstab
-echo "/dev/mmcblk1p1  /mnt/vfat       vfat    rw,sync,dirsync,noatime,umask=0000,utf8     0   0" >> /etc/fstab
+echo "/dev/mmcblk1p1  /mnt/sd         vfat    rw,sync,dirsync,noatime,umask=0000,utf8     0   0" >> /etc/fstab
 
 echo "\n# for not show in desktop" >> /etc/fstab
 echo "/dev/mmcblk0p1  none            none    none                                        0   0" >> /etc/fstab
@@ -83,12 +90,14 @@ echo "/dev/mmcblk0p22 none            none    none                              
 echo "/dev/mmcblk0p23 none            none    none                                        0   0" >> /etc/fstab
 echo "/dev/mmcblk0p24 none            none    none                                        0   0" >> /etc/fstab
 echo "/dev/mmcblk0p25 none            none    none                                        0   0" >> /etc/fstab
+echo "/dev/mmcblk0p26 none            none    none                                        0   0" >> /etc/fstab
+echo "/dev/mmcblk0p27 none            none    none                                        0   0" >> /etc/fstab
 
 
 # hostname
-echo "dm200" > /etc/hostname
+echo "pomera" > /etc/hostname
 echo "127.0.0.1 localhost" > /etc/hosts
-echo "127.0.1.1 dm200" >> /etc/hosts
+echo "127.0.1.1 pomera" >> /etc/hosts
 
 
 # stop bluetoothd auto start
@@ -99,23 +108,27 @@ echo "127.0.1.1 dm200" >> /etc/hosts
 echo "\nPATH=/opt/bin:\$PATH" >> /root/.bashrc
 echo "\nPATH=/opt/bin:\$PATH" >> /etc/skel/.bashrc
 
+#echo "set root password"
+#passwd
+
+# lock root account
+passwd -l root
+
 # add user
-echo "set root password"
-passwd
-useradd dm200 -d /home/dm200 -m -k /etc/skel -s /bin/bash -G video,sudo,lp
-echo "set dm200 passwd"
-passwd dm200
+useradd pomera -d /home/pomera -m -k /etc/skel -s /bin/bash -G video,sudo,lp
+echo "set pomera passwd"
+passwd pomera
 
 
 ## .xinitrc
-#cat << \EOT >> /home/dm200/.xinitrc
+#cat << \EOT >> /home/pomera/.xinitrc
 #export LANG=ja_JP.UTF-8
 #export GTK_IM_MODULE=ibus
 #export XMODIFIERS=@im=ibus
 #export QT_IM_MODULE=ibus
 #
 #EOT
-##cat << \EOT >> /home/dm200/.xinitrc
+##cat << \EOT >> /home/pomera/.xinitrc
 ##export LANG=ja_JP.UTF-8
 ##export GTK_IM_MODULE=fcitx
 ##export XMODIFIERS=@im=fcitx
@@ -123,12 +136,12 @@ passwd dm200
 ##
 ##EOT
 #
-##echo "ibus-daemon -drx&" >> /home/dm200/.xinitrc
-#echo "exec startxfce4" >> /home/dm200/.xinitrc
-#chown dm200:dm200 /home/dm200/.xinitrc
+##echo "ibus-daemon -drx&" >> /home/pomera/.xinitrc
+#echo "exec startxfce4" >> /home/pomera/.xinitrc
+#chown pomera:pomera /home/pomera/.xinitrc
 
 # add auto fbterm setting
-cat << \EOT >> /home/dm200/.bashrc
+cat << \EOT >> /home/pomera/.bashrc
 
 alias fbterm="LANG=ja_JP.UTF-8 fbterm -- uim-fep"
 
@@ -165,5 +178,10 @@ EOT
 # stop auto X startup
 #systemctl disable lightdm
 
+# stop e2scrub_reap
+systemctl stop e2scrub_reap.service
+systemctl disable e2scrub_reap.service
+
 # remove myself
 rm /tmp/initial_settings.sh
+

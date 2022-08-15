@@ -1,0 +1,14 @@
+#!/bin/sh
+
+BACKLIGHT_CONFIG_FILE=/mnt/sd/settings/backlight.conf
+
+case $1 in
+  start)
+    # set backlight brightness
+    if [ -e "$BACKLIGHT_CONFIG_FILE" ]; then
+        /opt/bin/backlight `cat $BACKLIGHT_CONFIG_FILE`
+    fi
+  ;;
+esac
+
+exit 0

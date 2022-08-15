@@ -1,13 +1,25 @@
 #!/bin/sh
 
-BT_MAC=`cat /opt/sys_info/bt_mac.dat`
-WIFI_SETTING_FILE=/mnt/vfat/settings/wpa_supplicant.conf
+WIFI_SETTING_FILE=/mnt/sd/settings/wpa_supplicant.conf
+
+if [ `cat /proc/meminfo | awk 'NR==1 {print $2}'` -eq 1026076 ]; then
+   MODEL="DM250"
+else
+   MODEL="DM200"
+fi
 
 case $1 in
   start)
     # WiFi firmware
-    echo "/opt/etc/firmware/fw_RK901a2.bin" > /sys/module/bcmdhd/parameters/firmware_path
-    echo "/opt/etc/firmware/nvram_AP6210.txt" > /sys/module/bcmdhd/parameters/nvram_path
+    if [ $MODEL = "DM250" ]; then
+        #DM250
+        echo "/opt/etc/firmware/fw_bcm43438a1.bin" > /sys/module/bcmdhd/parameters/firmware_path
+        echo "/opt/etc/firmware/nvram_AP6212.txt" > /sys/module/bcmdhd/parameters/nvram_path
+    else
+        #DM200
+        echo "/opt/etc/firmware/fw_RK901a2.bin" > /sys/module/bcmdhd/parameters/firmware_path
+        echo "/opt/etc/firmware/nvram_AP6210.txt" > /sys/module/bcmdhd/parameters/nvram_path
+    fi
 
     # WiFi/bt power on
 #    echo 1 > /sys/class/rkwifi/driver

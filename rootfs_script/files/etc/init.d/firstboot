@@ -1,8 +1,20 @@
 #!/bin/sh
 
+if [ `cat /proc/meminfo | awk 'NR==1 {print $2}'` -eq 1026076 ]; then
+   MODEL="DM250"
+else
+   MODEL="DM200"
+fi
+
 case $1 in
   start)
     /sbin/depmod -a
+    if [ $MODEL = "DM250" ]; then
+        #DM250
+        timedatectl set-local-rtc 0
+    else
+        timedatectl set-local-rtc 1
+    fi
     rm /etc/rc3.d/S10firstboot
   ;;
 esac
