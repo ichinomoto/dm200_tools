@@ -10,10 +10,10 @@ mount -t vfat /dev/mmcblk1p1 /mnt/sd
 
 if [ $? = 0 ]; then
     if [ -e /mnt/sd/_init.sh ]; then
-        cp /mnt/sd/_init.sh /mnt/_init.sh
+        cp /mnt/sd/_init.sh /tmp/_init.sh
         rm /mnt/sd/_init.sh
         umount /mnt/sd
-        exec /mnt/_init.sh
+        exec /tmp/_init.sh
     else
         umount /mnt/sd
     fi
@@ -28,22 +28,6 @@ if [ $? = 0 ]; then
     umount /proc
     exec /sbin/switch_root /root /sbin/init
 fi
-
 echo "####### /dev/mmcblk1p2 mount failed! #######"
 
-echo "####### check restore script #######"
-mount -t vfat /dev/mmcblk1p1 /mnt/sd
-
-if [ $? = 0 ]; then
-    if [ -e /mnt/sd/_sdboot.sh ]; then
-        cp /mnt/sd/_sdboot.sh /mnt/_sdboot.sh
-        umount /mnt/sd
-        exec /mnt/sd/_sdboot.sh
-    else
-        umount /mnt/sd
-    fi
-fi
-echo "####### restore script not found #######"
-
-echo "####### exec init #######"
 exec /sbin/orig/init

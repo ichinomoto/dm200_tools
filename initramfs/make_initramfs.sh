@@ -29,6 +29,7 @@ mkdir -p dev/pts
 mkdir -p dev/shm
 mkdir -p dev/snd
 mkdir -p dev/sound
+mkdir -p tmp
 mkdir proc
 mkdir root
 mkdir sys
