@@ -127,6 +127,15 @@ make_swap() {
     mkswap $MMCBLK_SD_SWAP
 }
 
+##
+# remove install files
+#
+remove_install_files() {
+    rm $MOUNT_SD/_sdboot.sh
+    rm $MOUNT_SD/install.sh
+    rm -fr $MOUNT_SD/res
+}
+
 #########################
 # main
 #
@@ -143,16 +152,16 @@ dd if=/dev/zero of=/dev/fb0 > /dev/null 2>&1
 dd if=$RESOURCE_IMG_DIR/install_top.bin of=/dev/fb0 bs=2K count=170 > /dev/null 2>&1
 
 # mount rootfs
-mount_target_rootfs
-if [ $RET -ne 0 ]; then
-    show_error_img
-    sleep 3
-    exit 1
-fi
+#mount_target_rootfs
+#if [ $RET -ne 0 ]; then
+#    show_error_img
+#    sleep 3
+#    exit 1
+#fi
 
 # get resource files from dm200 original partition
-dd if=$RESOURCE_IMG_DIR/install_file.bin of=/dev/fb0 bs=2K seek=170 count=60 > /dev/null 2>&1
-copy_files
+#dd if=$RESOURCE_IMG_DIR/install_file.bin of=/dev/fb0 bs=2K seek=170 count=60 > /dev/null 2>&1
+#copy_files
 
 # install kernel/initramfs
 dd if=$RESOURCE_IMG_DIR/install_kernel.bin of=/dev/fb0 bs=2K seek=230 count=60 > /dev/null 2>&1
@@ -172,13 +181,18 @@ if [ $RET -ne 0 ]; then
 fi
 
 # format swap partition
-dd if=$RESOURCE_IMG_DIR/install_swap.bin of=/dev/fb0 bs=2K seek=350 count=60 > /dev/null 2>&1
-make_swap
+#dd if=$RESOURCE_IMG_DIR/install_swap.bin of=/dev/fb0 bs=2K seek=350 count=60 > /dev/null 2>&1
+#make_swap
 
 # install end
 dd if=$RESOURCE_IMG_DIR/install_bottom.bin of=/dev/fb0 bs=2K seek=410 count=190 > /dev/null 2>&1
 touch $MOUNT_SD/INSTALL_COMPLETED
 echo "install finished" >> $LOGFILE
+date >> $LOGFILE
+
+# remove install file
+remove_install_files
+echo "remove install files finished" >> $LOGFILE
 date >> $LOGFILE
 
 sleep 3
