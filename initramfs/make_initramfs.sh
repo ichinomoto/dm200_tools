@@ -1,10 +1,11 @@
 #!/bin/sh
 
-####################################
+#######################################
 #
-# initramfs create script for DM200
-# v0.21 @ichinomoto
-# ####################################
+# initramfs create script for DM200/250
+# v0.3 @ichinomoto
+#
+#######################################
 BUSYBOX_SRC_VERSION=busybox-1.35.0
 
 if [ ! "${USER}" = "root" ]; then
