@@ -2,7 +2,7 @@
 
 WIFI_SETTING_FILE=/mnt/sd/settings/wpa_supplicant.conf
 
-if [ `cat /proc/meminfo | awk 'NR==1 {print $2}'` -eq 1026076 ]; then
+if [ -b /dev/mmcblk0p27 ]; then
    MODEL="DM250"
 else
    MODEL="DM200"

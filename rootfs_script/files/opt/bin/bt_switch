@@ -9,7 +9,7 @@ DM250_FILE="/opt/etc/firmware/BCM43438A1.hcd"
 DM250_PARAM="--patchram $DM250_FILE --bd_addr $BT_MAC --enable_hci --no2bytes --tosleep 1000 /dev/ttyS0"
 
 
-if [ `cat /proc/meminfo | awk 'NR==1 {print $2}'` -eq 1026076 ]; then
+if [ -b /dev/mmcblk0p27 ]; then
    MODEL="DM250"
 else
    MODEL="DM200"
@@ -29,8 +29,8 @@ case $1 in
     echo 1 > /sys/class/rfkill/rfkill0/state
 
     if [ $MODEL = "DM250" ]; then
-        # 一度brcm_patchram_plus実行すると石から応答が返ってこないので
-        # 止めて再度実行すると通信できるようになる。挙動が謎。
+        # Once exec brcm_patchram_plus, chip not respond.
+        # Then stop brcm_patchram_plus and retry, chip will response.
         /opt/bin/brcm_patchram_plus $DM250_PARAM &
         sleep 1
         killall brcm_patchram_plus
