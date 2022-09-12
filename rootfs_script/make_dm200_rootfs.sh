@@ -3,7 +3,7 @@
 ############################
 #
 # DM200 rootfs make script
-# v0.4 @ichinomoto
+# v0.4.1 @ichinomoto
 #
 ############################
 
@@ -96,7 +96,6 @@ if [ -e $COPY_FILES ]; then
     cp -r $COPY_FILES/lib $ROOTFS/
     cp -r $COPY_FILES/lib/modules $ROOTFS/lib/
     cp -r $COPY_FILES/opt $ROOTFS/
-#    cp -r $COPY_FILES/usr $ROOTFS/
 
     ln -s ../init.d/dm200_wireless $ROOTFS/etc/rc3.d/S10dm200_wireless
     ln -s ../init.d/dm200_wireless $ROOTFS/etc/rc4.d/S10dm200_wireless
@@ -107,11 +106,6 @@ if [ -e $COPY_FILES ]; then
     ln -s ../init.d/usb_host $ROOTFS/etc/rc4.d/S10usb_host
     ln -s ../init.d/usb_host $ROOTFS/etc/rc5.d/S10usb_host
     ln -s ../init.d/usb_host $ROOTFS/etc/rc6.d/K10usb_host
-
-    ln -s ../init.d/keychecker $ROOTFS/etc/rc3.d/S10keychecker
-    ln -s ../init.d/keychecker $ROOTFS/etc/rc4.d/S10keychecker
-    ln -s ../init.d/keychecker $ROOTFS/etc/rc5.d/S10keychecker
-    ln -s ../init.d/keychecker $ROOTFS/etc/rc6.d/K10keychecker
 
     ln -s ../init.d/backlight $ROOTFS/etc/rc3.d/S10backlight
     ln -s ../init.d/backlight $ROOTFS/etc/rc4.d/S10backlight
