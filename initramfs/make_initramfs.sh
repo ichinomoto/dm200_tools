@@ -22,13 +22,13 @@ tar jxvf $BUSYBOX_SRC_VERSION.tar.bz2
 cd $BUSYBOX_SRC_VERSION
 make defconfig
 sed -i -e "s/# CONFIG_STATIC is not set/CONFIG_STATIC=y/" .config
-# busybox 1.37‚Å‚Í‚±‚ê‚ğno‚É‚µ‚È‚¢‚Æ“®‚©‚È‚¢B
+# busybox 1.37ã§ã¯ã“ã‚Œã‚’noã«ã—ãªã„ã¨å‹•ã‹ãªã„ã€‚
 # https://forum.beagleboard.org/t/errors-during-busybox-compilation/38969/5
 sed -i -e "s/CONFIG_TC=y/CONFIG_TC=n/" .config
-# busybox 1.37‚Åx86_64ˆÈŠO‚ÍC³‚ª•K—v
+# busybox 1.37ã§x86_64ä»¥å¤–ã¯ä¿®æ­£ãŒå¿…è¦
 # https://lists.uclibc.org/pipermail/busybox/2024-September/090899.html
 patch -u --ignore-whitespace libbb/hash_md5_sha.c ../for1.37_MissingShaNIguard.patch
-make -j$(proc)
+make -j$(nproc)
 make install
 
 cd _install
