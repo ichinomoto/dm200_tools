@@ -1,6 +1,16 @@
 #!/bin/sh
 
-# japanese settings
+# global settings
+HOSTNAME=pomera
+USERNAME=pomera
+# ---------------
+
+# chroot settings
+mount -t proc proc /proc
+bind
+
+# user interface
+## japanese settings
 chmod u+s /usr/bin/fbterm
 sed -i -e "s/# ja_JP.UTF-8 UTF-8/ja_JP.UTF-8 UTF-8/" /etc/locale.gen
 LANG="ja_JP.UTF-8"
@@ -9,7 +19,14 @@ update-locale
 rm /etc/localtime
 ln -s /usr/share/zoneinfo/Asia/Tokyo /etc/localtime
 
-# keyboard layout
+## no sudo
+chmod u+s /sbin/halt
+chmod u+s /sbin/reboot
+chmod u+s /usr/bin/ping
+chmod u+s /usr/bin/ping4
+chmod u+s /usr/bin/ping6
+
+## keyboard layout
 echo 'XKBMODEL="jp106"' > /etc/default/keyboard
 echo 'XKBLAYOUT="jp"' >> /etc/default/keyboard
 echo '#XKBOPTIONS="ctrl:nocaps"' >> /etc/default/keyboard
@@ -17,114 +34,178 @@ echo '#XKBOPTIONS="ctrl:nocaps"' >> /etc/default/keyboard
 #echo 'XKBLAYOUT="us"' >> /etc/default/keyboard
 #echo 'XKBOPTIONS="ctrl:nocaps"' >> /etc/default/keyboard
 
-# mali module
+## pomera fix
+cat > /etc/adjtime << EOT
+0.0 0 0
+0
+LOCAL
+EOT
+
+
+# kernel modules
+## mali module
 echo drm >> /etc/modules
 echo mali_drm >> /etc/modules
 echo ump >> /etc/modules
 echo mali >> /etc/modules
 
-# write source.list
+
+# os settings
+## stop auto X startup
+#systemctl disable lightdm
+
+## stop e2scrub_reap
+systemctl stop e2scrub_reap.service
+systemctl disable e2scrub_reap.service
+
+## write source.list
 DISTRIBUTION=`cat /etc/issue | awk '{print $1}'`
-UBUNTU_VERSINO=`cat /etc/issue | awk '{print $2}'`
-VERSION=`cat /etc/issue | awk '{print $3}'`
 if [ ${DISTRIBUTION} = "Debian" ]; then
-  if [ ${VERSION} = "10" ]; then
-    CODE_NAME=buster
-  elif [ ${VERSION} = "11" ]; then
-    CODE_NAME=bullseye
-  fi
-    echo "deb http://deb.debian.org/debian/ $CODE_NAME main contrib non-free" > /etc/apt/sources.list
-    echo "deb http://security.debian.org/debian-security $CODE_NAME-security main contrib non-free" >> /etc/apt/sources.list
-    echo "deb http://deb.debian.org/debian/ $CODE_NAME-updates main contrib non-free" >> /etc/apt/sources.list
-    #echo "deb http://deb.debian.org/debian $CODE_NAME-backports main contrib non-free" > /etc/apt/sources.list
+    CODE_NAME=`cat /etc/os-release | grep VERSION_CODENAME= | sed "s/.*=//g"`
+    mkdir -p /etc/apt/sources.list.d
+    touch /etc/apt/sources.list.d/debian.sources
+    cat > /etc/apt/sources.list.d/debian.sources << EOF
+Types: deb deb-src
+URIs: https://ftp.riken.jp/Linux/debian/debian/
+Suites: $CODE_NAME $CODE_NAME-updates $CODE_NAME-backports
+Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb deb-src
+URIs: https://security.debian.org/debian-security
+Suites: $CODE_NAME-security
+Components: main contrib non-free non-free-firmware
+Enabled: yes
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+EOF
 elif [ ${DISTRIBUTION} = "Ubuntu" ]; then
-  if [ ${UBUNTU_VERSINO} = "16.04" ]; then
-    echo "deb http://jp.archive.ubuntu.com/ubuntu-ports/ xenial main restricted" > /etc/apt/sources.list
-    echo "deb http://jp.archive.ubuntu.com/ubuntu-ports/ xenial-updates main restricted" >> /etc/apt/sources.list
-    echo "deb http://jp.archive.ubuntu.com/ubuntu-ports/ xenial universe" >> /etc/apt/sources.list
-    echo "deb http://jp.archive.ubuntu.com/ubuntu-ports/ xenial-updates universe" >> /etc/apt/sources.list
-    echo "deb http://jp.archive.ubuntu.com/ubuntu-ports/ xenial multivers" >> /etc/apt/sources.list
-    echo "deb http://jp.archive.ubuntu.com/ubuntu-ports/ xenial-updates multivers" >> /etc/apt/sources.list
-  fi
+    CODE_NAME=`cat /etc/os-release | grep VERSION_CODENAME= | sed "s/.*=//g"`
+    mkdir -p /etc/apt/sources.list.d
+    touch /etc/apt/sources.list.d/ubuntu.sources
+    cat > /etc/apt/sources.list.d/ubuntu.sources << EOF
+Types: deb deb-src
+URIs: http://archive.ubuntu.com/ubuntu/
+Suites: $CODE_NAME $CODE_NAME-updates $CODE_NAME-backports
+Components: main restricted universe multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+Types: deb deb-src
+URIs: http://security.ubuntu.com/ubuntu/
+Suites: $CODE_NAME-security
+Components: main restricted universe multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+EOF
 fi
 
+## make mount point
+install -g 1000 -o 1000 -m 771 -d /mnt/sd
+install -g 1000 -o 1000 -m 660 -d /mnt/internal
 
-# make mount point
-mkdir /mnt/sd
+## write fstab
+cat > /etc/fstab << EOT
+proc                /proc           proc    nodev,nosuid,noexec                         0   0 
+sysfs               /sys            sysfs   defaults                                    0   0 
+devpts              /dev/pts        devpts  defaults                                    0   0 
+/dev/mmcblk0p11 /opt/sys_info   ext4    ro                                          0   0 
+/dev/mmcblk1p2  /                 ext4    errors=remount-ro                           0   1 
+/dev/mmcblk1p3  none             swap    sw                                          0   0 
+/dev/mmcblk1p1  /mnt/sd       vfat    rw,sync,dirsync,noatime,umask=0000,utf8,uid=1000,gid=1000     0   0 
+/dev/mmcblk1p7  /mnt/internal vfat    rw,sync,dirsync,noatime,umask=0000,utf8,uid=1000,gid=1000     0   0 
 
-# write fstab
-echo "proc            /proc           proc    nodev,nosuid,noexec                         0   0" > /etc/fstab
-echo "sysfs           /sys            sysfs   defaults                                    0   0" >> /etc/fstab
-echo "devpts          /dev/pts        devpts  defaults                                    0   0" >> /etc/fstab
-echo "/dev/mmcblk0p11 /opt/sys_info   ext4    ro                                          0   0" >> /etc/fstab
-echo "/dev/mmcblk1p2  /               ext4    errors=remount-ro                           0   1" >> /etc/fstab
-echo "/dev/mmcblk1p3  none            swap    sw                                          0   0" >> /etc/fstab
-echo "/dev/mmcblk1p1  /mnt/sd         vfat    rw,sync,dirsync,noatime,umask=0000,utf8     0   0" >> /etc/fstab
+# for not show in desktop 
+/dev/mmcblk0p1  none            none    none                                        0   0 
+/dev/mmcblk0p2  none            none    none                                        0   0 
+/dev/mmcblk0p3  none            none    none                                        0   0 
+/dev/mmcblk0p4  none            none    none                                        0   0 
+/dev/mmcblk0p5  none            none    none                                        0   0 
+/dev/mmcblk0p6  none            none    none                                        0   0 
+/dev/mmcblk0p7  none            none    none                                        0   0 
+/dev/mmcblk0p8  none            none    none                                        0   0 
+/dev/mmcblk0p9  none            none    none                                        0   0 
+/dev/mmcblk0p10 none            none    none                                        0   0 
+/dev/mmcblk0p12 none            none    none                                        0   0 
+/dev/mmcblk0p13 none            none    none                                        0   0 
+/dev/mmcblk0p14 none            none    none                                        0   0 
+/dev/mmcblk0p15 none            none    none                                        0   0 
+/dev/mmcblk0p16 none            none    none                                        0   0 
+/dev/mmcblk0p17 none            none    none                                        0   0 
+/dev/mmcblk0p18 none            none    none                                        0   0 
+/dev/mmcblk0p19 none            none    none                                        0   0 
+/dev/mmcblk0p20 none            none    none                                        0   0 
+/dev/mmcblk0p21 none            none    none                                        0   0 
+/dev/mmcblk0p22 none            none    none                                        0   0 
+/dev/mmcblk0p23 none            none    none                                        0   0 
+/dev/mmcblk0p24 none            none    none                                        0   0 
+/dev/mmcblk0p25 none            none    none                                        0   0 
+/dev/mmcblk0p26 none            none    none                                        0   0 
+/dev/mmcblk0p27 none            none    none                                        0   0 
 
-echo "\n# for not show in desktop" >> /etc/fstab
-echo "/dev/mmcblk0p1  none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p2  none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p3  none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p4  none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p5  none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p6  none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p7  none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p8  none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p9  none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p10 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p12 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p13 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p14 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p15 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p16 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p17 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p18 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p19 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p20 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p21 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p22 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p23 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p24 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p25 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p26 none            none    none                                        0   0" >> /etc/fstab
-echo "/dev/mmcblk0p27 none            none    none                                        0   0" >> /etc/fstab
+# ----- user settings -----
 
+EOT
 
-# hostname
-echo "pomera" > /etc/hostname
+## hostname
+echo $HOSTNAME > /etc/hostname
 echo "127.0.0.1 localhost" > /etc/hosts
-echo "127.0.1.1 pomera" >> /etc/hosts
+echo "127.0.1.1 $HOSTNAME" >> /etc/hosts
 
-
-# stop bluetoothd auto start
+## stop bluetoothd auto start
 #chmod -x /etc/init.d/bluetooth
 
 
-# add /opt/bin to PATH to skel
-echo "\nPATH=/opt/bin:\$PATH" >> /root/.bashrc
-echo "\nPATH=/opt/bin:\$PATH" >> /etc/skel/.bashrc
+# user configures
+## add auto fbterm setting for skel
+cat >> /etc/skel/.bashrc << EOT
+# ----- fbterm -----
+alias fbterm="LANG=ja_JP.UTF-8 fbterm -- uim-fep"
 
-#echo "set root password"
-#passwd
+# If you want to auto launch fbterm at login time, uncomment here.
+#case "$TERM" in
+#  linux*)
+#    LANG=ja_JP.UTF-8 fbterm -- uim-fep
+#	;;
+#esac
 
-# lock root account
+# ...And If you want to auto launch tmux at login time, uncomment here.
+#if [ $SHLVL = 2 ]; then
+#    tmux
+#fi
+
+EOT
+
+## add /opt/bin to PATH to skel
+cat >>/etc/skel/.bashrc<<EOT
+# ----- PATH -----
+
+PATH=/usr/sbin:/sbin:/opt/bin:\$PATH
+
+EOT
+
+## add auto tmux setting for skel
+cat >> /etc/skel/.tmux.conf << EOT
+set-option -g status-interval 60
+set-option -g status-right "#(date '+%m月%d日 %A %H:%M') #(/opt/bin/battery)%#(/opt/bin/battery_ischarging)"
+EOT
+
+## lock root account
 passwd -l root
 
-# add user
-useradd pomera -d /home/pomera -m -k /etc/skel -s /bin/bash -G video,sudo,lp
-echo "set pomera passwd"
-passwd pomera
-
+## add user
+useradd $USERNAME -d /home/$USERNAME -m -k /etc/skel -s /bin/bash -G video,sudo,lp
+echo "set $USERNAME passwd"
+passwd $USERNAME
 
 ## .xinitrc
-#cat << \EOT >> /home/pomera/.xinitrc
+#cat << \EOT >> /home/$USERNAME/.xinitrc
 #export LANG=ja_JP.UTF-8
 #export GTK_IM_MODULE=ibus
 #export XMODIFIERS=@im=ibus
 #export QT_IM_MODULE=ibus
 #
 #EOT
-##cat << \EOT >> /home/pomera/.xinitrc
+##cat << \EOT >> /home/$USERNAME/.xinitrc
 ##export LANG=ja_JP.UTF-8
 ##export GTK_IM_MODULE=fcitx
 ##export XMODIFIERS=@im=fcitx
@@ -132,33 +213,33 @@ passwd pomera
 ##
 ##EOT
 #
-##echo "ibus-daemon -drx&" >> /home/pomera/.xinitrc
-#echo "exec startxfce4" >> /home/pomera/.xinitrc
-#chown pomera:pomera /home/pomera/.xinitrc
+##echo "ibus-daemon -drx&" >> /home/$USERNAME/.xinitrc
+#echo "exec startxfce4" >> /home/$USERNAME/.xinitrc
+#chown $USERNAME:$USERNAME /home/$USERNAME/.xinitrc
 
-# add auto fbterm setting
-cat << \EOT >> /home/pomera/.bashrc
+## add PATH to root
+cat >>/root/.bashrc<<EOT
+# ----- PATH -----
 
-alias fbterm="LANG=ja_JP.UTF-8 fbterm -- uim-fep"
+PATH=/usr/sbin:/sbin:/opt/bin:\$PATH
 
-# If you want to auto launch fbturm at login time, uncomment here.
-#case "$TERM" in
-#  linux*)
-#    LANG=ja_JP.UTF-8 fbterm -- uim-fep
-#	;;
-#esac
 EOT
+
 
 # network config
 #systemctl disable NetworkManager
 systemctl enable systemd-networkd
 systemctl enable systemd-resolved
 systemctl start systemd-resolved
-#resolv.conf
+
+## pomera fix - boot wait disable
+systemctl disable systemd-networkd-wait-online.service
+
+## resolv.conf
 rm /etc/resolv.conf
 ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
-#interface
-#mkdir /etc/systemd/network
+
+## interface
 cat << EOT > /etc/systemd/network/20-dhcp.network
 [Match]
 Name=wlan0
@@ -171,13 +252,10 @@ EOT
 #systemctl start bluetooth.service
 #systemctl enable bluetooth.service
 
-# stop auto X startup
-#systemctl disable lightdm
-
-# stop e2scrub_reap
-systemctl stop e2scrub_reap.service
-systemctl disable e2scrub_reap.service
 
 # remove myself
 rm /tmp/initial_settings.sh
 
+# start customize
+/tmp/myinstall.sh
+exit 0

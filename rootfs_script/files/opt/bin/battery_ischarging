@@ -1,0 +1,15 @@
+#!/bin/bash
+if [ -e "/sys/class/power_supply/BATTERY/device/state" ]; then
+    # DM200
+    BATTERYDIR=BATTERY
+else
+    # DM250
+    BATTERYDIR=battery
+fi
+
+if [ `cat /sys/class/power_supply/$BATTERYDIR/subsystem/AC/online` == 1 ]; then
+    echo "+"
+else
+    echo " "
+fi
+
