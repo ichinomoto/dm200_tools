@@ -1,0 +1,14 @@
+DM200 third-party firmware notice
+=================================
+
+This Debian root filesystem and the DM200 kernel image include third-party
+wireless firmware and regulatory data. They are distributed for use with the
+Broadcom wireless hardware in the King Jim Pomera DM200.
+
+The files retain their original contents. They are not covered by the Linux
+kernel GPL license; their own copyright and redistribution terms continue to
+apply. See SOURCES.md for the source URLs and checksums, and
+LICENCE.broadcom_bcm43xx for the Broadcom license text.
+
+The wireless-regdb package's ISC copyright notice is installed separately at
+/usr/share/doc/wireless-regdb/copyright.
