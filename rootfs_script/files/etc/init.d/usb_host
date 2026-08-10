@@ -2,7 +2,9 @@
 
 case $1 in
   start)
-    echo 1 > /sys/bus/platform/drivers/usb20_otg/force_usb_mode
+    if [ -w /sys/bus/platform/drivers/usb20_otg/force_usb_mode ]; then
+        echo 1 > /sys/bus/platform/drivers/usb20_otg/force_usb_mode
+    fi
   ;;
   stop)
 

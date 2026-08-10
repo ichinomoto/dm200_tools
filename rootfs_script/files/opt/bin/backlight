@@ -1,3 +1,17 @@
 #!/bin/sh
 
-echo $1 > /sys/class/backlight/rk28_bl/brightness
+set -eu
+
+if [ "$#" -ne 1 ]; then
+    echo "Usage: backlight BRIGHTNESS" >&2
+    exit 2
+fi
+
+brightness=/sys/class/backlight/backlight/brightness
+if [ -w "$brightness" ]; then
+    printf '%s\n' "$1" > "$brightness"
+    exit 0
+fi
+
+echo "No writable backlight device found" >&2
+exit 1
