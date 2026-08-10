@@ -13,6 +13,9 @@ On a Debian build host, install the bootstrap tools first:
 The script must be run as root because debootstrap and the target chroot
 create device-independent root-owned files.
 
+The image creation script additionally requires `e2fsprogs`, `rsync`, and
+`util-linux` on the host.
+
 ## Build
 
 From this directory:
@@ -44,10 +47,8 @@ Kernel modules are not copied unless `--kernel-modules` is specified.  Install
 modules from the current Linux 6.18 kernel build first, then pass the directory
 containing the release subdirectory:
 
-    make -C git/linux O=/path/to/kernel-build \
-      modules_install INSTALL_MOD_PATH=/tmp/dm200-modules
-    sudo ./make_dm200_rootfs.sh \
-      --kernel-modules /tmp/dm200-modules/lib/modules
+    make -C git/linux O=/path/to/kernel-build modules_install INSTALL_MOD_PATH=/tmp/dm200-modules
+    sudo ./make_dm200_rootfs.sh --kernel-modules /tmp/dm200-modules/lib/modules
 
 ## Optional inputs
 
@@ -62,3 +63,24 @@ containing the release subdirectory:
 The root filesystem keeps the DM200 partition layout used by the current
 kernel command line: /dev/mmcblk1p2 is /, /dev/mmcblk1p1 is /mnt/sd, and
 /dev/mmcblk1p3 is swap.
+
+## ext4 image
+
+After the rootfs directory is complete, create the ext4 partition image as a
+separate step:
+
+    sudo ./make_rootfs_image.sh
+
+The default output is `rootfs.img`.  The image size is calculated from the
+populated rootfs plus a fixed 128 MiB for filesystem metadata and initial use.
+The SD partition can be expanded after writing.
+To match a specific SD card partition size, provide an explicit
+size and use `--force` only when replacing the exact output file:
+
+    sudo ./make_rootfs_image.sh --size 4G --force
+
+The script also writes `rootfs.img.sha256`.  This image represents the
+`mmcblk1p2` filesystem only; it does not contain an SD card partition table or
+the other DM200 partitions.  After enlarging the partition on the SD card,
+run `resize2fs /dev/mmcblk1p2` to expand the ext4 filesystem into the new
+space.
