@@ -1,0 +1,19 @@
+[Unit]
+Description=One-time DM200 SD expansion and RTC setup
+Requires=dev-mmcblk1p2.device
+Wants=getty-pre.target
+After=local-fs.target dev-mmcblk1p2.device
+Before=multi-user.target getty-pre.target
+ConditionPathExists=!/var/lib/pomera/platform-firstboot.done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/pomera-platform-firstboot.sh
+StandardOutput=journal+console
+StandardError=journal+console
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

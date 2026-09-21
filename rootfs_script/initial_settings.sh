@@ -72,6 +72,12 @@ for shell_rc in /root/.bashrc /etc/skel/.bashrc; do
     fi
 done
 
+# The normal user is created on the target's first boot, after the partition
+# expansion has completed.  Keeping the account out of the image avoids
+# putting a build-time password or a fixed home directory into every image.
+# Root stays locked until the first-boot service creates the account.
+passwd -l root
+
 # FbTerm/uim defaults are inherited by the user created on first boot.
 if ! grep -q '^alias fbterm=' /etc/skel/.bashrc 2>/dev/null; then
     cat >> /etc/skel/.bashrc <<'EOF'
@@ -126,8 +132,14 @@ disable_service()
 
 disable_service systemd-networkd.service
 disable_service networking.service
+# User setup now runs inside getty@tty1, never as a competing TTY reader.
+# Also remove the old unit/link when rebuilding an existing rootfs directory.
+disable_service pomera-user-firstboot.service
+rm -f /etc/systemd/system/pomera-user-firstboot.service
+
 enable_service NetworkManager.service
 enable_service systemd-resolved.service
+enable_service pomera-platform-firstboot.service
 
 rm -f /etc/systemd/network/20-dhcp.network
 
