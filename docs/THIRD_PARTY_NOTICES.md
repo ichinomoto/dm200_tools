@@ -1,9 +1,8 @@
 # DM200 third-party notices
 
-The DM200 `kernel.img` and Debian root filesystem include third-party wireless
-firmware and regulatory data. These files are not part of the Linux kernel
-source and remain subject to their own terms when they are embedded in
-`kernel.img` or included in `sd.img`.
+The Debian root filesystem includes third-party wireless firmware and
+regulatory data. These files are not part of the Linux kernel source and remain
+subject to their own terms when they are included in `sd.img`.
 
 ## Broadcom/Armbian wireless firmware
 
@@ -13,11 +12,12 @@ also renamed into the paths used by the mainline `brcmfmac` driver:
 
 - `rkwifi/fw_RK901a2.bin` -> `brcm/brcmfmac43362-sdio.bin`
 - `ap6210/nvram.txt` -> `brcm/brcmfmac43362-sdio.txt`
+- `ap6210/bcm20710a1.hcd` -> `brcm/BCM20702A1.hcd` (rootfs Bluetooth firmware)
 
 Armbian does not provide one blanket license for every file in its firmware
 repository; the license and redistribution conditions of each file apply.
 The repository also notes that some files are proprietary. See the [Armbian
-firmware README](https://github.com/armbian/firmware/blob/master/README.md) and
+firmware README](https://github.com/armbian/firmware/blob/2a9e1c19460401443267926181191d57e3ff175d/README.md) and
 the source/sha256 record for all downloaded files in
 [`rootfs_script/files/usr/share/doc/dm200-firmware/SOURCES.md`](../rootfs_script/files/usr/share/doc/dm200-firmware/SOURCES.md).
 
@@ -39,7 +39,7 @@ must remain paired with the database. Do not modify either file. See the
 
 ## Distribution note
 
-This notice applies to both `kernel.img` and `sd.img`. The firmware files are
-kept out of the tracked Linux source tree and are staged by the kernel build
-script. If the firmware source or version changes, update the source and
+This notice applies to the firmware included in `sd.img`. The firmware files
+are kept out of the tracked Linux source tree and are installed by the rootfs
+build script. If the firmware source or version changes, update the source and
 sha256 records and review the applicable license terms again.

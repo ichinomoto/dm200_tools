@@ -1,0 +1,3 @@
+# ISO 3166-1 alpha-2 country code for the location where Wi-Fi is used.
+# This rootfs defaults to Japan; change this when using it in another country.
+POMERA_WIFI_COUNTRY=JP

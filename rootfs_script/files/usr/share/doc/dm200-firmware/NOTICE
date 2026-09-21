@@ -1,9 +1,9 @@
-DM200 third-party firmware notice
-=================================
+Pomera third-party firmware notice
+===================================
 
-This Debian root filesystem and the DM200 kernel image include third-party
+This Debian root filesystem and the Pomera kernel images include third-party
 wireless firmware and regulatory data. They are distributed for use with the
-Broadcom wireless hardware in the King Jim Pomera DM200.
+Broadcom wireless hardware in the King Jim Pomera DM200, DM250, and DM250US.
 
 The files retain their original contents. They are not covered by the Linux
 kernel GPL license; their own copyright and redistribution terms continue to

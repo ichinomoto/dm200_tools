@@ -1,0 +1,17 @@
+[Unit]
+Description=Apply Pomera Wi-Fi regulatory country
+After=local-fs.target
+Before=NetworkManager.service wpa_supplicant.service
+
+[Service]
+Type=oneshot
+Environment=POMERA_WIFI_COUNTRY=JP
+EnvironmentFile=-/etc/default/pomera-wifi
+# cfg80211 is built into the kernel. Reload the signed database after rootfs
+# becomes available, including any cached failure from early boot.
+ExecStart=/usr/sbin/iw reg reload
+ExecStart=/usr/sbin/iw reg set ${POMERA_WIFI_COUNTRY}
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

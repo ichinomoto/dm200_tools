@@ -1,0 +1,87 @@
+#!/bin/sh
+# Unloading hci_uart runs bcm_close(), which asserts BT reset/shutdown.
+set -eu
+PATH=$PATH:/usr/sbin:/sbin
+export PATH
+fail() { echo "bluetooth_power: $*" >&2; exit 1; }
+usage() { echo "Usage: $0 {on|off|status}" >&2; exit 2; }
+[ "$#" -eq 1 ] || usage
+case $1 in on|off|status) ;; *) usage ;; esac
+dt=/sys/firmware/devicetree/base
+[ -r "$dt/compatible" ] || fail "Pomera device tree is unavailable"
+tr '\000' '\n' < "$dt/compatible" | grep -Eq '^kingjim,pomera-dm(200|250|250us)$' ||
+    fail "unsupported device"
+node=$dt/serial@20060000/bluetooth
+[ -d "$node" ] || fail "built-in Bluetooth device is unavailable"
+[ -f "$node/reset-gpios" ] || [ -f "$node/shutdown-gpios" ] || fail "Bluetooth has no power-down GPIO"
+state=off
+for serial in /sys/bus/serial/devices/*; do
+    [ -e "$serial/of_node" ] && [ -L "$serial/driver" ] || continue
+    if [ "$(readlink -f "$serial/of_node")" = "$node" ]; then
+        [ "$(basename "$(readlink -f "$serial/driver")")" = hci_uart_bcm ] || fail "Bluetooth has another driver"
+        state=on
+    fi
+done
+if [ "$1" = status ]; then echo "$state"; exit 0; fi
+[ "$(id -u)" -eq 0 ] || fail "run as root (sudo bluetooth_power $1)"
+exec 9>/run/pomera-radio-power.lock
+flock -x 9
+[ ! -e /run/pomera-hibernate-wireless ] || fail "hibernation radio recovery is in progress"
+radio_state=/run/pomera-radio-power
+mkdir -p -m 700 "$radio_state"
+
+if [ "$1" = off ]; then
+    # Refuse removal if another UART controller is using this module.
+    for serial in /sys/bus/serial/devices/*; do
+        [ -L "$serial/driver" ] || continue
+        case "$(basename "$(readlink -f "$serial/driver")")" in
+            hci_uart_*) [ "$(readlink -f "$serial/of_node")" = "$node" ] || fail "another UART Bluetooth controller is in use" ;;
+        esac
+    done
+    if [ -d /sys/module/hci_uart ]; then
+        modprobe -r hci_uart || fail "cannot unload hci_uart; Bluetooth remains available"
+    fi
+    : > "$radio_state/bluetooth-off"
+else
+    # With Wi-Fi powered off, Bluetooth needs its own shared-supply references.
+    wifi=/sys/bus/platform/devices/10218000.mmc
+    if [ ! -L "$wifi/driver" ]; then
+        for supply in vbat-supply vddio-supply; do
+            [ -s "$wifi/of_node/vmmc-supply" ] || fail "SDIO power supply is unavailable"
+            cmp -s "$wifi/of_node/vmmc-supply" "$node/$supply" ||
+                fail "install the updated Pomera DTB/resource before enabling Bluetooth alone"
+        done
+    fi
+    was_loaded=0
+    [ ! -d /sys/module/hci_uart ] || was_loaded=1
+    modprobe hci_uart || fail "cannot load hci_uart"
+    # HCI setup/firmware loading is asynchronous. Find the built-in controller,
+    # without assuming its hci number or powering on a USB Bluetooth adapter.
+    attempts=0
+    powered=0
+    while [ "$attempts" -lt 10 ]; do
+        for hci in /sys/class/bluetooth/hci*; do
+            [ -e "$hci/device/of_node" ] || continue
+            [ "$(readlink -f "$hci/device/of_node")" = "$node" ] || continue
+            for kill in "$hci"/rfkill*; do
+                [ -d "$kill" ] || continue
+                rfkill unblock "${kill##*rfkill}" || fail "cannot unblock Bluetooth"
+            done
+            if timeout 2 btmgmt --index "${hci##*hci}" power on >/dev/null 2>&1; then
+                powered=1
+                break
+            fi
+        done
+        [ "$powered" -eq 0 ] || break
+        attempts=$((attempts + 1))
+        sleep 1
+    done
+    if [ "$powered" -ne 1 ]; then
+        if [ "$was_loaded" -eq 0 ]; then
+            modprobe -r hci_uart || echo "bluetooth_power: power-on rollback failed" >&2
+        fi
+        fail "Bluetooth initialization failed; check dmesg and firmware"
+    fi
+    rm -f "$radio_state/bluetooth-off"
+fi
+echo "Bluetooth hardware $1"

@@ -97,6 +97,18 @@ fi
 # chroot is safe; starting them here would fail because the target systemd
 # instance is not running yet. NetworkManager uses the wpa_supplicant
 # service through D-Bus for Wi-Fi authentication.
+# The custom kernel trusts upstream wireless-regdb signatures. Debian ships
+# an alternatives group (DB + signature); Ubuntu ships the upstream pair
+# directly, with no alternatives group. Do not mask a missing DB on either.
+if [ -f /lib/firmware/regulatory.db-upstream ] && [ -f /lib/firmware/regulatory.db.p7s-upstream ]; then
+    update-alternatives --set regulatory.db /lib/firmware/regulatory.db-upstream
+elif [ "${ID:-}" = ubuntu ] && [ -s /lib/firmware/regulatory.db ] && [ -s /lib/firmware/regulatory.db.p7s ]; then
+    : # Ubuntu's packaged upstream DB is already in the driver's lookup path.
+else
+    echo "Error: upstream wireless-regdb database/signature pair not found" >&2
+    exit 1
+fi
+
 enable_service()
 {
     service=$1
@@ -138,6 +150,7 @@ disable_service pomera-user-firstboot.service
 rm -f /etc/systemd/system/pomera-user-firstboot.service
 
 enable_service NetworkManager.service
+enable_service pomera-wifi-country.service
 enable_service systemd-resolved.service
 enable_service pomera-platform-firstboot.service
 

@@ -1,0 +1,72 @@
+#!/bin/sh
+# Power down the built-in SDIO radio through MMC's normal power sequence.
+set -eu
+PATH=$PATH:/usr/sbin:/sbin
+export PATH
+fail() { echo "wifi_power: $*" >&2; exit 1; }
+usage() { echo "Usage: $0 {on|off|status}" >&2; exit 2; }
+[ "$#" -eq 1 ] || usage
+case $1 in on|off|status) ;; *) usage ;; esac
+dt=/sys/firmware/devicetree/base
+[ -r "$dt/compatible" ] || fail "Pomera device tree is unavailable"
+tr '\000' '\n' < "$dt/compatible" | grep -Eq '^kingjim,pomera-dm(200|250|250us)$' ||
+    fail "unsupported device"
+device=10218000.mmc
+controller=/sys/bus/platform/devices/$device
+driver=/sys/bus/platform/drivers/dwmmc_rockchip
+[ -d "$controller" ] && [ -d "$driver" ] || fail "built-in SDIO controller is unavailable"
+[ -d "$controller/of_node/wifi@1" ] || fail "refusing to control a non-Wi-Fi MMC device"
+read_state()
+{
+    state=off
+    if [ -L "$controller/driver" ]; then
+        [ "$(readlink -f "$controller/driver")" = "$driver" ] || fail "SDIO controller has another driver"
+        state=on
+    fi
+}
+read_state
+if [ "$1" = status ]; then echo "$state"; exit 0; fi
+[ "$(id -u)" -eq 0 ] || fail "run as root (sudo wifi_power $1)"
+exec 9>/run/pomera-radio-power.lock
+flock -x 9
+[ ! -e /run/pomera-hibernate-wireless ] || fail "hibernation radio recovery is in progress"
+read_state
+radio_state=/run/pomera-radio-power
+mkdir -p -m 700 "$radio_state"
+
+# Bluetooth must also own the shared supply before MMC can release its reference.
+# Refuse old DTBs rather than accidentally cutting power to Bluetooth.
+for supply in vbat-supply vddio-supply; do
+    [ -s "$controller/of_node/vmmc-supply" ] || fail "SDIO power supply is unavailable"
+    cmp -s "$controller/of_node/vmmc-supply" "$dt/serial@20060000/bluetooth/$supply" ||
+        fail "install the updated Pomera DTB/resource with the shared Bluetooth supply"
+done
+
+if [ "$1" = on ]; then
+    modprobe brcmfmac || fail "cannot load brcmfmac"
+    if [ "$state" = off ]; then
+        printf '%s\n' "$device" > "$driver/bind" || fail "SDIO power-on failed"
+    fi
+    # Saved NetworkManager profiles can reconnect after the device reappears.
+    if command -v nmcli >/dev/null 2>&1; then
+        nmcli --wait 5 radio wifi on || echo "wifi_power: NetworkManager radio enable failed" >&2
+    fi
+    rm -f "$radio_state/wifi-off"
+else
+    if [ "$state" = on ]; then
+        # Gracefully disconnect only interfaces belonging to this controller.
+        controller_path=$(readlink -f "$controller")
+        if command -v nmcli >/dev/null 2>&1; then
+            for net in /sys/class/net/*; do
+                [ -e "$net/device" ] || continue
+                net_path=$(readlink -f "$net/device")
+                case "$net_path" in
+                    "$controller_path"/*) nmcli --wait 5 device disconnect "${net##*/}" || true ;;
+                esac
+            done
+        fi
+        printf '%s\n' "$device" > "$driver/unbind" || fail "SDIO power-off failed"
+    fi
+    : > "$radio_state/wifi-off"
+fi
+echo "Wi-Fi hardware $1"
