@@ -1,0 +1,56 @@
+#!/bin/sh
+set -eu
+
+fail()
+{
+    echo "usb_host: $*" >&2
+    exit 1
+}
+
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 {on|off|status}" >&2
+    exit 2
+fi
+case $1 in
+    on|off|status) ;;
+    *) echo "Usage: $0 {on|off|status}" >&2; exit 2 ;;
+esac
+
+# RK3128's external connector uses the OTG controller, fixed to host in DT.
+# Bind/unbind controls data only. Never enable a VBUS regulator or GPIO here.
+device=10180000.usb
+controller=/sys/bus/platform/devices/$device
+driver=/sys/bus/platform/drivers/dwc2
+
+# This helper supports the current mainline controller only.
+if [ -d "$controller" ]; then
+    mode=$(tr -d '\000' < "$controller/of_node/dr_mode") ||
+        fail "cannot read USB dr_mode"
+    [ "$mode" = host ] || fail "requires the Pomera host-only device tree"
+    [ ! -e "$controller/of_node/vbus-supply" ] ||
+        fail "refusing to control a USB port with a VBUS supply"
+    [ -d "$driver" ] || fail "DWC2 driver is unavailable"
+
+    state=off
+    if [ -L "$controller/driver" ]; then
+        [ "$(readlink -f "$controller/driver")" = "$driver" ] ||
+            fail "USB controller is bound to another driver"
+        state=on
+    fi
+    if [ "$1" = status ]; then
+        echo "$state"
+        exit 0
+    fi
+    if [ "$1" != "$state" ]; then
+        case $1 in
+            on) control=$driver/bind ;;
+            off) control=$driver/unbind ;;
+        esac
+        [ -w "$control" ] || fail "cannot write $control (run as root)"
+        printf '%s\n' "$device" > "$control" || fail "USB $1 failed"
+    fi
+    echo "USB host $1 (VBUS output is not controlled)"
+
+else
+    fail "USB host control is unavailable; install the Pomera USB kernel and DTB"
+fi
