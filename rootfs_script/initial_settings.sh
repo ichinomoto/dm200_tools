@@ -152,6 +152,11 @@ rm -f /etc/systemd/system/pomera-user-firstboot.service
 enable_service NetworkManager.service
 enable_service pomera-wifi-country.service
 enable_service systemd-resolved.service
+# keyd replaces the former custom evdev/uinput daemon.
+disable_service pomera-keymap.service
+rm -f /etc/systemd/system/pomera-keymap.service /etc/pomera-keymap.conf \
+    /usr/local/sbin/pomera-keymap
+enable_service keyd.service
 # Brightness is saved/restored by the packaged systemd-backlight unit.
 # Remove the former SD configuration override from an older rootfs.
 disable_service pomera-backlight.service
