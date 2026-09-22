@@ -6,6 +6,8 @@
 
 # font family names/pixelsize used by fbterm, multiple font family names must be seperated by ','
 # and using a fixed width font as the first is strongly recommended
+# Keep the original scalable console font and size.
+# Unifont-JP needs an explicit font-width=8 at 16px in FbTerm; see CONSOLE.jp.md.
 font-names=Ricty Diminished
 font-size=18
 
@@ -41,5 +43,5 @@ screen-rotate=0
 # specify the favorite input method program to run
 input-method=
 
-# treat ambiguous width characters as wide
-ambiguous-wide=yes
+# Match glibc wcwidth(), readline, ncurses and uim-fep for ambiguous characters.
+ambiguous-wide=no

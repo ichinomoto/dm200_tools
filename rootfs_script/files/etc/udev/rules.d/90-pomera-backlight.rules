@@ -1,0 +1,3 @@
+# Grant video members access only to the Pomera LCD brightness attribute.
+# GROUP/MODE affect device nodes, so sysfs attributes need explicit commands.
+ACTION=="add|change", SUBSYSTEM=="backlight", KERNEL=="backlight", RUN+="/usr/bin/chgrp video /sys%p/brightness", RUN+="/usr/bin/chmod g+w /sys%p/brightness"

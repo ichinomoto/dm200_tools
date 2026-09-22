@@ -1,0 +1,53 @@
+#!/bin/sh
+set -eu
+
+fail() { echo "battery: $*" >&2; exit 1; }
+usage() { echo "Usage: battery [--details]"; }
+
+[ "$#" -le 1 ] || { usage >&2; exit 2; }
+case ${1:-} in
+    ''|--details) ;;
+    -h|--help) usage; exit 0 ;;
+    *) usage >&2; exit 2 ;;
+esac
+
+# RK818 and BQ27xxx expose different names. Use the standard power-supply
+# properties and exclude batteries belonging to peripherals (e.g. a mouse).
+battery=
+for supply in /sys/class/power_supply/*; do
+    [ -r "$supply/type" ] && [ -r "$supply/capacity" ] || continue
+    type=$(cat "$supply/type") || continue
+    [ "$type" = Battery ] || continue
+    if [ -r "$supply/scope" ]; then
+        scope=$(cat "$supply/scope") || continue
+        [ "$scope" != Device ] || continue
+    fi
+    [ -z "$battery" ] || fail "multiple system batteries found"
+    battery=$supply
+done
+[ -n "$battery" ] || fail "no system battery with a capacity reading found"
+capacity=$(cat "$battery/capacity") || fail "cannot read battery capacity"
+case $capacity in ''|*[!0-9]*) fail "invalid capacity: $capacity" ;; esac
+[ "$capacity" -le 100 ] 2>/dev/null || fail "invalid capacity: $capacity"
+
+if [ "${1:-}" != --details ]; then
+    printf '%s\n' "$capacity"
+    exit 0
+fi
+
+printf 'device: %s\ncapacity: %s %%\n' "${battery##*/}" "$capacity"
+for property in status health present technology voltage_now current_now \
+    charge_now charge_full charge_full_design energy_now energy_full \
+    energy_full_design cycle_count temp; do
+    [ -r "$battery/$property" ] || continue
+    value=$(cat "$battery/$property") || continue
+    case $property in
+        voltage_*) unit=' uV' ;;
+        current_*) unit=' uA' ;;
+        charge_*) unit=' uAh' ;;
+        energy_*) unit=' uWh' ;;
+        temp) unit=' (0.1 C)' ;;
+        *) unit= ;;
+    esac
+    printf '%s: %s%s\n' "$property" "$value" "$unit"
+done

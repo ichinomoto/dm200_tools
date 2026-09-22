@@ -1,0 +1,68 @@
+#!/bin/sh
+
+set -eu
+
+fail() { echo "backlight: $*" >&2; exit 1; }
+minimum=41
+usage() { echo "Usage: backlight [status|BRIGHTNESS|--decrease|--increase|--restore] (BRIGHTNESS: $minimum..max_brightness)"; }
+
+[ "$#" -le 1 ] || { usage >&2; exit 2; }
+value=${1-status}
+case $value in
+    -h|--help) usage; exit 0 ;;
+    --restore)
+        config=/mnt/sd/settings/backlight.conf
+        [ -e "$config" ] || exit 0
+        value=$(cat "$config") || fail "cannot read $config"
+        case $value in ''|*[!0-9]*) fail "invalid brightness in $config" ;; esac
+        ;;
+esac
+case $value in
+    status|--decrease|--increase) ;;
+    ''|*[!0-9]*) usage >&2; exit 2 ;;
+esac
+
+device=
+for candidate in /sys/class/backlight/*; do
+    [ -r "$candidate/brightness" ] && [ -r "$candidate/max_brightness" ] || continue
+    [ -z "$device" ] || fail "multiple backlight devices found"
+    device=$candidate
+done
+[ -n "$device" ] || fail "no backlight device found"
+maximum=$(cat "$device/max_brightness") || fail "cannot read maximum brightness"
+case $maximum in ''|*[!0-9]*) fail "invalid maximum brightness" ;; esac
+if [ "$value" = status ]; then
+    current=$(cat "$device/brightness") || fail "cannot read brightness"
+    printf '%s/%s\n' "$current" "$maximum"
+    exit 0
+fi
+
+# Normalize leading zeroes and reject overflow/out-of-range values before writing.
+step=0
+case $value in
+    --decrease) step=-1 ;;
+    --increase) step=1 ;;
+    *)
+        value=$(printf '%s' "$value" | sed 's/^0*//')
+        value=${value:-0}
+        [ "$value" -ge "$minimum" ] 2>/dev/null && [ "$value" -le "$maximum" ] 2>/dev/null || fail "brightness must be between $minimum and $maximum"
+        ;;
+esac
+[ -w "$device/brightness" ] || fail "cannot write brightness (check the Pomera udev rule and video group membership; log in again after joining video)"
+
+# keyd launches commands asynchronously. Lock the brightness inode so rapid
+# presses and ordinary numeric writes cannot lose a read/modify/write update.
+exec 9< "$device/brightness"
+flock -x 9 || fail "cannot lock brightness"
+if [ "$step" -ne 0 ]; then
+    [ "$maximum" -ge "$minimum" ] 2>/dev/null || fail "invalid brightness range"
+    current=$(cat "$device/brightness") || fail "cannot read brightness"
+    case $current in ''|*[!0-9]*) fail "invalid current brightness" ;; esac
+    current=$(printf '%s' "$current" | sed 's/^0*//')
+    current=${current:-0}
+    [ "$current" -le "$maximum" ] 2>/dev/null || fail "invalid current brightness"
+    value=$((current + step))
+    [ "$value" -ge "$minimum" ] || value=$minimum
+    [ "$value" -le "$maximum" ] || value=$maximum
+fi
+printf '%s\n' "$value" > "$device/brightness" || fail "brightness update failed"

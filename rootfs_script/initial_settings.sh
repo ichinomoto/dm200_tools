@@ -152,6 +152,10 @@ rm -f /etc/systemd/system/pomera-user-firstboot.service
 enable_service NetworkManager.service
 enable_service pomera-wifi-country.service
 enable_service systemd-resolved.service
+# Brightness is saved/restored by the packaged systemd-backlight unit.
+# Remove the former SD configuration override from an older rootfs.
+disable_service pomera-backlight.service
+rm -f /etc/systemd/system/pomera-backlight.service
 enable_service pomera-platform-firstboot.service
 
 rm -f /etc/systemd/network/20-dhcp.network

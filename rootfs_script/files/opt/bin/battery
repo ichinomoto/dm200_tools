@@ -1,9 +1,0 @@
-#!/bin/sh
-
-if [ -e "/sys/class/power_supply/BATTERY/capacity" ]; then
-    #DM200
-    cat /sys/class/power_supply/BATTERY/capacity
-else
-    #DM250
-    cat /sys/class/power_supply/battery/capacity
-fi

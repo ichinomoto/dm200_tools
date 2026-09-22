@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -ne 0 ]; then
+    echo "Usage: sus2ram" >&2
+    exit 2
+fi
+
+# Let logind/systemd apply the configured sleep mode and suspend hooks.
+# Keep the existing delay before the request.
+sleep 3
+exec systemctl suspend

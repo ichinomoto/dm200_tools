@@ -1,9 +1,0 @@
-#!/bin/sh
-
-if [ -e "/sys/class/power_supply/BATTERY/device/state" ]; then
-    #DM200
-    cat /sys/class/power_supply/BATTERY/device/state
-else
-    #DM250
-    echo "DM250 is not support battery2 command"
-fi
