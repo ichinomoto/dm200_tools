@@ -152,6 +152,9 @@ rm -f /etc/systemd/system/pomera-user-firstboot.service
 enable_service NetworkManager.service
 enable_service pomera-wifi-country.service
 enable_service systemd-resolved.service
+# timesyncd belongs to sysinit.target, as declared in its packaged unit.
+# Install and enable it explicitly: debootstrap does not pull Recommends.
+enable_service systemd-timesyncd.service sysinit.target
 # keyd replaces the former custom evdev/uinput daemon.
 disable_service pomera-keymap.service
 rm -f /etc/systemd/system/pomera-keymap.service /etc/pomera-keymap.conf \
