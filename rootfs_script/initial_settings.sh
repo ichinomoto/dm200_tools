@@ -166,6 +166,10 @@ disable_service pomera-backlight.service
 rm -f /etc/systemd/system/pomera-backlight.service
 enable_service pomera-platform-firstboot.service
 
+# Enable audio for future users without starting a user manager in the chroot.
+# PipeWire/WirePlumber use the logged-in user's session on both tty1 and Xfce.
+systemctl --global enable pipewire.service pipewire-pulse.service wireplumber.service
+
 rm -f /etc/systemd/network/20-dhcp.network
 
 mkdir -p /etc/NetworkManager/conf.d
