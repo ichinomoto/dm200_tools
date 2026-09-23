@@ -1,0 +1,123 @@
+#!/bin/sh
+# Reprobe firmware-backed radios after a power-losing hibernation cycle.
+set -eu
+PATH=$PATH:/usr/sbin:/sbin
+export PATH
+umask 077
+
+STATE=/run/pomera-hibernate-wireless
+MODULES=/sys/module
+COMPATIBLE=/sys/firmware/devicetree/base/compatible
+REMOVE_ORDER="hci_uart brcmfmac_wcc brcmfmac_cyw brcmfmac_bca brcmfmac"
+RESTORE_ORDER="brcmfmac brcmfmac_wcc brcmfmac_cyw brcmfmac_bca hci_uart"
+RADIO_STATE=/run/pomera-radio-power
+
+restore_power_off()
+{
+    # The temporary resume kernel can have changed GPIO levels even for a
+    # radio which was detached in the saved image. Run the normal shutdown
+    # paths again, without changing the user's recorded OFF selections.
+    if [ -f "$RADIO_STATE/bluetooth-off" ]; then
+        if ! modprobe hci_uart || ! modprobe -r hci_uart; then
+            log "could not reapply Bluetooth OFF"
+            return 1
+        fi
+    fi
+    if [ -f "$RADIO_STATE/wifi-off" ]; then
+        controller=/sys/bus/platform/devices/10218000.mmc
+        driver=/sys/bus/platform/drivers/dwmmc_rockchip
+        [ -d "$controller" ] && [ -d "$driver" ] || return 1
+        if [ ! -L "$controller/driver" ]; then
+            printf '%s\n' 10218000.mmc > "$driver/bind" || return 1
+        elif [ "$(readlink -f "$controller/driver")" != "$driver" ]; then
+            return 1
+        fi
+        printf '%s\n' 10218000.mmc > "$driver/unbind" || return 1
+    fi
+}
+
+log()
+{
+    printf '%s\n' "pomera-hibernate-wireless: $*" >&2
+}
+
+restore()
+{
+    [ -d "$STATE" ] || return 0
+    restore_failed=0
+    # Bring SDIO/Wi-Fi back before the UART Bluetooth controller.
+    for module in $RESTORE_ORDER; do
+        [ -f "$STATE/$module" ] || continue
+        if [ -d "$MODULES/$module" ] || modprobe "$module"; then
+            rm -f "$STATE/$module"
+            log "restored $module"
+        else
+            log "could not restore $module; state retained for retry"
+            restore_failed=1
+        fi
+    done
+    if [ "$restore_failed" -eq 0 ] && ! restore_power_off; then
+        log "could not restore manual radio OFF state; retry restore"
+        restore_failed=1
+    fi
+    if [ "$restore_failed" -eq 0 ]; then
+        rmdir "$STATE"
+    fi
+    return "$restore_failed"
+}
+
+prepare()
+{
+    [ -r "$COMPATIBLE" ] || return 0
+    if ! tr '\000' '\n' < "$COMPATIBLE" |
+        grep -Eq '^kingjim,pomera-dm(200|250|250us)$'; then
+        return 0
+    fi
+    if [ -e "$STATE" ]; then
+        log "previous state remains; run restore before retrying hibernation"
+        return 1
+    fi
+    # Firmware vendor plugins hold references to brcmfmac. Refuse unknown
+    # dependants before removing a plugin, whose exit tears down its devices.
+    for holder in "$MODULES/brcmfmac/holders/"*; do
+        [ -e "$holder" ] || continue
+        case "${holder##*/}" in
+            brcmfmac_wcc|brcmfmac_cyw|brcmfmac_bca) ;;
+            *) log "unexpected brcmfmac holder: ${holder##*/}"; return 1 ;;
+        esac
+    done
+    mkdir -m 700 "$STATE"
+    # Record the original state before removing anything. ExecStopPost also
+    # restores this list if preparation or the hibernation operation fails.
+    for module in $REMOVE_ORDER; do
+        if [ -d "$MODULES/$module" ]; then
+            : > "$STATE/$module"
+        fi
+    done
+    for module in $REMOVE_ORDER; do
+        [ -f "$STATE/$module" ] || continue
+        # Removing the last plugin may also remove the unused core module.
+        [ -d "$MODULES/$module" ] || continue
+        log "removing $module before hibernation"
+        if ! modprobe -r "$module"; then
+            log "could not remove $module; refusing hibernation"
+            return 1
+        fi
+    done
+    for module in $REMOVE_ORDER; do
+        if [ -d "$MODULES/$module" ]; then
+            log "$module is still loaded; refusing hibernation"
+            return 1
+        fi
+    done
+}
+
+case "${1:-}" in
+    prepare|restore)
+        # Serialize module changes with the manual Wi-Fi/Bluetooth power helpers.
+        exec 9>/run/pomera-radio-power.lock
+        flock -x 9
+        "$1"
+        ;;
+    *) log "usage: $0 {prepare|restore}"; exit 2 ;;
+esac
