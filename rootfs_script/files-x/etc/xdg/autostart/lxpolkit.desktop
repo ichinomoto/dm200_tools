@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PolicyKit Authentication Agent
+Name[ja]=PolicyKit 認証エージェント
+Exec=lxpolkit
+TryExec=lxpolkit
+Terminal=false
+OnlyShowIn=XFCE;
+NoDisplay=true

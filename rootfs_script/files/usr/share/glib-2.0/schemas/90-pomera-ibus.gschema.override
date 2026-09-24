@@ -1,0 +1,4 @@
+# Keep the Xorg/Xfce keyboard layout when switching input methods.
+# Users can still change this preference in ibus-setup.
+[org.freedesktop.ibus.general]
+use-system-keyboard-layout=true

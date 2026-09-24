@@ -1,0 +1,4 @@
+# The ibus dconf profile has system defaults above the GSettings defaults.
+# Keep it consistent with 90-pomera-ibus.gschema.override; do not lock the key.
+[desktop/ibus/general]
+use-system-keyboard-layout=true

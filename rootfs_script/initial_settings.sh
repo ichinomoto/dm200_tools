@@ -36,6 +36,14 @@ fi
 # Font packages are all installed by this point, including the CJK fallbacks.
 fc-cache -f
 
+# IBus should preserve the keyboard layout selected by Xorg/Xfce.  The files
+# overlay is copied after package installation, so rebuild both defaults here.
+# No user preferences are written or locked.  Console-only builds skip this.
+if command -v ibus-daemon >/dev/null 2>&1; then
+    glib-compile-schemas --strict /usr/share/glib-2.0/schemas
+    dconf update
+fi
+
 # Keyboard layout used by X and console-setup.
 cat > /etc/default/keyboard <<'EOF'
 XKBMODEL="jp106"

@@ -6,6 +6,5 @@ export XMODIFIERS=@im=ibus
 export QT_IM_MODULE=ibus
 ibus-daemon -drx&
 
-xfce4-power-manager&
-
+# Xfce starts the power manager and desktop applets through XDG autostart.
 startxfce4
