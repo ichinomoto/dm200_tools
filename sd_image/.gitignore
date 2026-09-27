@@ -1,0 +1,4 @@
+*.img
+*.img.sha256
+*.zip
+*.zip.sha256
