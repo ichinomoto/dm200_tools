@@ -6,7 +6,7 @@ HCI_PATH='/sys/class/bluetooth/hci0'
 DM200_FILE="/opt/sys_info/bcm20710a1.hcd"
 DM200_PARAM="-d --patchram $DM200_FILE --baudrate 115200 --enable_hci --no2bytes --tosleep 1000 /dev/ttyS0"
 DM250_FILE="/opt/etc/firmware/BCM43438A1.hcd"
-DM250_PARAM="--patchram $DM250_FILE --bd_addr $BT_MAC --enable_hci --no2bytes --tosleep 1000 /dev/ttyS0"
+DM250_PARAM="--patchram $DM250_FILE --bd_addr $BT_MAC --baudrate 1500000 --enable_hci --no2bytes --tosleep 1000 /dev/ttyS0"
 
 
 if [ -b /dev/mmcblk0p27 ]; then
