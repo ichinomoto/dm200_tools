@@ -8,6 +8,13 @@ DM200_PARAM="-d --patchram $DM200_FILE --baudrate 115200 --enable_hci --no2bytes
 DM250_FILE="/opt/etc/firmware/BCM43438A1.hcd"
 DM250_PARAM="--patchram $DM250_FILE --bd_addr $BT_MAC --baudrate 1500000 --enable_hci --no2bytes --tosleep 1000 /dev/ttyS0"
 
+# On DM250 the first open of /dev/ttyS0 after power-on never transmits (the tx counter
+# of ttyS0 in /proc/tty/driver/rk_serial does not advance), so brcm_patchram_plus gets
+# no response from the chip.
+# Opening and closing the port once beforehand avoids this.
+prime_uart() {
+    ( exec 3<>/dev/ttyS0; sleep 0.2 ) 2>/dev/null
+}
 
 if [ -b /dev/mmcblk0p27 ]; then
    MODEL="DM250"
@@ -29,11 +36,7 @@ case $1 in
     echo 1 > /sys/class/rfkill/rfkill0/state
 
     if [ $MODEL = "DM250" ]; then
-        # Once exec brcm_patchram_plus, chip not respond.
-        # Then stop brcm_patchram_plus and retry, chip will response.
-        /opt/bin/brcm_patchram_plus $DM250_PARAM &
-        sleep 1
-        killall brcm_patchram_plus
+        prime_uart
         /opt/bin/brcm_patchram_plus $DM250_PARAM &
     else
         /opt/bin/brcm_patchram_plus $DM200_PARAM &
