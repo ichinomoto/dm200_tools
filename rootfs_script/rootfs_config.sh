@@ -44,6 +44,7 @@ configure_rootfs()
             ARCHIVE_KEYRING_PACKAGE=debian-archive-keyring
             TARGET_KEYRING=/usr/share/keyrings/debian-archive-keyring.gpg
             NETWORK_APPLET_PACKAGE=network-manager-applet
+            WIFI_FIRMWARE_PACKAGE=firmware-brcm80211
             DEFAULT_ROOTFS=$SCRIPT_DIR/rootfs
             ;;
         ubuntu)
@@ -58,6 +59,7 @@ configure_rootfs()
             ARCHIVE_KEYRING_PACKAGE=ubuntu-keyring
             TARGET_KEYRING=/usr/share/keyrings/ubuntu-archive-keyring.gpg
             NETWORK_APPLET_PACKAGE=network-manager-applet
+            WIFI_FIRMWARE_PACKAGE=linux-firmware-broadcom-wireless
             LOCALE_PACKAGES=,language-pack-ja
             # Removed from 26.04; iw/NetworkManager provide wireless control.
             LEGACY_WIRELESS_PACKAGE=
@@ -78,6 +80,9 @@ configure_rootfs()
     BASE_PACKAGES="apt-utils,ca-certificates,$ARCHIVE_KEYRING_PACKAGE,systemd,systemd-resolved,systemd-timesyncd,dbus,systemd-sysv,udev,kmod,passwd"
     NETWORK_PACKAGES="cifs-utils,keyutils,netbase,iproute2,bind9-dnsutils,net-tools,isc-dhcp-client,openssh-server,iputils-ping,wget,network-manager"
     WIRELESS_PACKAGES="bluetooth,iw,rfkill,wireless-regdb,wpasupplicant$LEGACY_WIRELESS_PACKAGE"
+    if [ "$INSTALL_FIRMWARE" -eq 1 ]; then
+        WIRELESS_PACKAGES="$WIRELESS_PACKAGES,$WIFI_FIRMWARE_PACKAGE"
+    fi
     CONSOLE_PACKAGES="console-setup,sudo,psmisc,locales,keyboard-configuration,dialog,parted,gdisk,e2fsprogs,util-linux,bsdutils,less,lv,unar,evtest,fbset,i2c-tools"
     JAPANESE_PACKAGES="fbterm,fbi,screen,tmux,fontconfig,fonts-unifont,fonts-vlgothic,fonts-ricty-diminished,fonts-noto-cjk-extra"
     INPUT_PACKAGES="keyd,uim-mozc,uim-fep$LOCALE_PACKAGES"

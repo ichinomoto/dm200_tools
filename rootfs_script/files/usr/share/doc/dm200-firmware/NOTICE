@@ -1,7 +1,7 @@
 Pomera third-party firmware notice
 ===================================
 
-This Debian root filesystem and the Pomera kernel images include third-party
+This Debian/Ubuntu root filesystem and the Pomera kernel images include third-party
 wireless firmware and regulatory data. They are distributed for use with the
 Broadcom wireless hardware in the King Jim Pomera DM200, DM250, and DM250US.
 
@@ -9,6 +9,11 @@ The files retain their original contents. They are not covered by the Linux
 kernel GPL license; their own copyright and redistribution terms continue to
 apply. See SOURCES.md for the source URLs and checksums, and
 LICENCE.broadcom_bcm43xx for the Broadcom license text.
+
+Packaged Wi-Fi firmware is supplied by firmware-brcm80211 (Debian) or
+linux-firmware-broadcom-wireless (Ubuntu). Its installed package copyright
+file is retained under /usr/share/doc/PACKAGE/copyright. Board NVRAM and
+Bluetooth firmware are separately supplied by the pinned Armbian source.
 
 The wireless-regdb package's ISC copyright notice is installed separately at
 /usr/share/doc/wireless-regdb/copyright.

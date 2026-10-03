@@ -19,7 +19,8 @@ PRINT_PACKAGES=0
 ENABLE_X=${POMERA_ENABLE_X:-1}
 INSTALL_FIRMWARE=${POMERA_INSTALL_FIRMWARE:-1}
 FIRMWARE_DIR=${POMERA_FIRMWARE_DIR:-}
-# Keep the default firmware source reproducible.  POMERA_FIRMWARE_BASE_URL
+# Pin the supplemental NVRAM/Bluetooth source. Wi-Fi binaries come from APT.
+# POMERA_FIRMWARE_BASE_URL
 # can still point at a local mirror, while POMERA_FIRMWARE_COMMIT can select a
 # different immutable Armbian revision.
 FIRMWARE_COMMIT=${POMERA_FIRMWARE_COMMIT:-2a9e1c19460401443267926181191d57e3ff175d}
@@ -47,13 +48,14 @@ Options:
   --print-packages        Print the selected package names and exit without building
   --clean                 Remove an existing ROOTFS before building it
   --no-x                  Do not install Xorg/Xfce or desktop applets
-  --no-firmware           Do not download the optional Pomera wireless firmware
-  --firmware-dir DIR      Copy firmware from DIR instead of downloading it
+  --no-firmware           Skip Wi-Fi firmware packages and NVRAM/Bluetooth files
+  --firmware-dir DIR      Copy NVRAM/Bluetooth files from DIR instead of downloading
   --kernel-modules DIR    Copy a kernel's lib/modules directory into the rootfs
   --help                  Show this help
 
 The same options can be set with POMERA_* environment variables.  The default
-firmware revision is $FIRMWARE_COMMIT.  The default output directory is
+NVRAM/Bluetooth revision is $FIRMWARE_COMMIT. Wi-Fi binaries use the distro's
+firmware package. The default output directory is
 rootfs_script/rootfs for Debian, or rootfs_script/rootfs-ubuntu-SUITE for Ubuntu.
 Ubuntu builds need the host's ubuntu-keyring package (signature checks stay enabled).
 A legacy module directory at
@@ -145,6 +147,10 @@ if [ "$ENABLE_X" != 0 ] && [ "$ENABLE_X" != 1 ]; then
     echo "Error: POMERA_ENABLE_X must be 0 or 1" >&2
     exit 2
 fi
+if [ "$INSTALL_FIRMWARE" != 0 ] && [ "$INSTALL_FIRMWARE" != 1 ]; then
+    echo "Error: POMERA_INSTALL_FIRMWARE must be 0 or 1" >&2
+    exit 2
+fi
 # shellcheck source=rootfs_config.sh
 . "$SCRIPT_DIR/rootfs_config.sh"
 configure_rootfs
@@ -168,10 +174,6 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-if [ "$INSTALL_FIRMWARE" != 0 ] && [ "$INSTALL_FIRMWARE" != 1 ]; then
-    echo "Error: POMERA_INSTALL_FIRMWARE must be 0 or 1" >&2
-    exit 2
-fi
 for command in chroot chown chmod cp find mkdir mount mountpoint rm sed tr umount; do
     if ! command -v "$command" >/dev/null 2>&1; then
         echo "Error: required command not found: $command" >&2
@@ -468,47 +470,36 @@ if [ "$INSTALL_FIRMWARE" -eq 1 ]; then
     mkdir -p "$FIRMWARE_DESTINATION"
     mkdir -p "$BRCM_FIRMWARE_DESTINATION"
 
-    # Keep the original vendor paths as well as the names used by the
-    # mainline drivers.  The generic rootfs is shared by all three Pomera
-    # models, so it deliberately contains both wireless module variants:
-    #
-    #   DM200       AP6210 / BCM43362
-    #   DM250/US    AP6212 / BCM43438 (the driver maps the SDIO chip ID)
-    #
-    # The model-specific device tree selects the device; brcmfmac selects the
-    # exact firmware name from the chip ID returned over SDIO.
+    # APT owns all Wi-Fi binaries and the A1 CLM blob. Never overwrite them
+    # with legacy vendor copies. Ubuntu ships compressed .zst firmware;
+    # the Pomera kernel must support compressed firmware loading.
+    for firmware_name in brcmfmac43362-sdio.bin brcmfmac4329-sdio.bin \
+                         brcmfmac43430a0-sdio.bin brcmfmac43430-sdio.bin \
+                         brcmfmac43430-sdio.clm_blob; do
+        if [ ! -s "$BRCM_FIRMWARE_DESTINATION/$firmware_name" ] &&
+           [ ! -s "$BRCM_FIRMWARE_DESTINATION/$firmware_name.zst" ] &&
+           [ ! -s "$BRCM_FIRMWARE_DESTINATION/$firmware_name.xz" ]; then
+            echo "Error: $WIFI_FIRMWARE_PACKAGE did not provide $firmware_name" >&2
+            exit 1
+        fi
+    done
+
+    # The common rootfs contains NVRAM and Bluetooth firmware for all models:
+    # DM200 AP6210/BCM43362 and DM250/US AP6212/BCM43438.
     copy_or_download_firmware ap6210/bcm20710a1.hcd "$FIRMWARE_DESTINATION/bcm20710a1.hcd"
     copy_or_download_firmware ap6210/nvram.txt "$FIRMWARE_DESTINATION/nvram_AP6210.txt"
-    copy_or_download_firmware rkwifi/fw_RK901a2.bin "$FIRMWARE_DESTINATION/fw_RK901a2.bin"
-    copy_or_download_firmware rkwifi/fw_RK901a2_apsta.bin "$FIRMWARE_DESTINATION/fw_RK901a2_apsta.bin"
-    copy_or_download_firmware rkwifi/fw_RK901a2_p2p.bin "$FIRMWARE_DESTINATION/fw_RK901a2_p2p.bin"
 
     copy_or_download_firmware ap6212/bcm43438a0.hcd "$FIRMWARE_DESTINATION/BCM43438A0.hcd"
     copy_or_download_firmware ap6212/bcm43438a1.hcd "$FIRMWARE_DESTINATION/BCM43438A1.hcd"
-    copy_or_download_firmware ap6212/fw_bcm43438a1.bin "$FIRMWARE_DESTINATION/fw_bcm43438a1.bin"
-    copy_or_download_firmware ap6212/fw_bcm43438a1_apsta.bin "$FIRMWARE_DESTINATION/fw_bcm43438a1_apsta.bin"
-    copy_or_download_firmware ap6212/fw_bcm43438a1_mfg.bin "$FIRMWARE_DESTINATION/fw_bcm43438a1_mfg.bin"
     copy_or_download_firmware ap6212/nvram.txt "$FIRMWARE_DESTINATION/nvram_AP6212.txt"
 
-    # Mainline brcmfmac names for the AP6212/BCM43438 Wi-Fi controller.  The
-    # DT compatible used by DM250/US is generic, so keep the 4329 name as
-    # well as both 43430 revisions; the controller reports the final mapping
-    # at runtime.  The A1 definition also requests the country-code blob when
-    # supported by the driver.
-    copy_or_download_firmware brcm/brcmfmac4329-sdio.bin \
-        "$BRCM_FIRMWARE_DESTINATION/brcmfmac4329-sdio.bin"
+    # Board NVRAM is not supplied under the generic names by the packages.
     copy_or_download_firmware brcm/brcmfmac4329-sdio.txt \
         "$BRCM_FIRMWARE_DESTINATION/brcmfmac4329-sdio.txt"
-    copy_or_download_firmware brcm/brcmfmac43430a0-sdio.bin \
-        "$BRCM_FIRMWARE_DESTINATION/brcmfmac43430a0-sdio.bin"
     copy_or_download_firmware brcm/brcmfmac43430a0-sdio.txt \
         "$BRCM_FIRMWARE_DESTINATION/brcmfmac43430a0-sdio.txt"
-    copy_or_download_firmware brcm/brcmfmac43430-sdio.bin \
-        "$BRCM_FIRMWARE_DESTINATION/brcmfmac43430-sdio.bin"
     copy_or_download_firmware brcm/brcmfmac43430-sdio.txt \
         "$BRCM_FIRMWARE_DESTINATION/brcmfmac43430-sdio.txt"
-    copy_or_download_firmware brcm/brcmfmac43430-sdio.clm_blob \
-        "$BRCM_FIRMWARE_DESTINATION/brcmfmac43430-sdio.clm_blob"
     # hci_bcm identifies the BCM43438 Bluetooth controller as BCM4343A0
     # after reading its UART version.  Keep the vendor spelling below too.
     copy_or_download_firmware brcm/BCM4343A0.hcd \
@@ -521,11 +512,8 @@ if [ "$INSTALL_FIRMWARE" -eq 1 ]; then
         "$BRCM_FIRMWARE_DESTINATION/BCM4343A1.hcd"
 
     # The mainline brcmfmac driver looks in /lib/firmware/brcm and identifies
-    # the DM200 module as Broadcom BCM43362.  Keep the original vendor names
-    # above for Bluetooth and legacy tools, and install the DM200 Wi-Fi pair
-    # under the names requested by brcmfmac.
-    cp -- "$FIRMWARE_DESTINATION/fw_RK901a2.bin" \
-        "$BRCM_FIRMWARE_DESTINATION/brcmfmac43362-sdio.bin"
+    # the DM200 module as Broadcom BCM43362. Install its AP6210 NVRAM under
+    # the requested name while leaving the package's binary untouched.
     cp -- "$FIRMWARE_DESTINATION/nvram_AP6210.txt" \
         "$BRCM_FIRMWARE_DESTINATION/brcmfmac43362-sdio.txt"
     # The Bluetooth controller is the UART-attached BCM20702A1 on the same

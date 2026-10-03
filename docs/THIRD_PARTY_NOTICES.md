@@ -1,18 +1,23 @@
 # DM200 third-party notices
 
-The Debian root filesystem includes third-party wireless firmware and
+The Debian/Ubuntu root filesystem includes third-party wireless firmware and
 regulatory data. These files are not part of the Linux kernel source and remain
 subject to their own terms when they are included in `sd.img`.
 
 ## Broadcom/Armbian wireless firmware
 
-The DM200 wireless firmware files are obtained from the Armbian firmware
-repository and copied without changing their contents. The BCM43362 pair is
-also renamed into the paths used by the mainline `brcmfmac` driver:
+Wi-Fi binaries and CLM data are installed through Debian's `firmware-brcm80211`
+or Ubuntu 26.04's `linux-firmware-broadcom-wireless`. Their installed copyright
+files are retained under `/usr/share/doc/PACKAGE/copyright`.
 
-- `rkwifi/fw_RK901a2.bin` -> `brcm/brcmfmac43362-sdio.bin`
+Board NVRAM and Bluetooth firmware are copied from the pinned Armbian
+repository without modifying their contents, for example:
+
 - `ap6210/nvram.txt` -> `brcm/brcmfmac43362-sdio.txt`
-- `ap6210/bcm20710a1.hcd` -> `brcm/BCM20702A1.hcd` (rootfs Bluetooth firmware)
+- `ap6210/bcm20710a1.hcd` -> `brcm/BCM20702A1.hcd`
+
+The legacy RK901a2 Wi-Fi binary is no longer renamed over the packaged
+BCM43362 binary. This lets package updates replace the running firmware.
 
 Armbian does not provide one blanket license for every file in its firmware
 repository; the license and redistribution conditions of each file apply.
