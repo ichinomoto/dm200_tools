@@ -86,6 +86,15 @@ done
 # Root stays locked until the first-boot service creates the account.
 passwd -l root
 
+# OpenSSH's postinst generates host keys even with policy-rc.d in place.
+# Never distribute those keys or a build-time machine identity/random seed.
+# systemd initializes machine-id on the target; sshd-keygen.service creates
+# missing host keys before either SSH service or socket activation starts.
+rm -f /etc/ssh/ssh_host_* /var/lib/dbus/machine-id /var/lib/systemd/random-seed /etc/machine-id
+printf '%s\n' uninitialized > /etc/machine-id
+mkdir -p /var/lib/dbus
+ln -s /etc/machine-id /var/lib/dbus/machine-id
+
 # FbTerm/uim defaults are inherited by the user created on first boot.
 if ! grep -q '^alias fbterm=' /etc/skel/.bashrc 2>/dev/null; then
     cat >> /etc/skel/.bashrc <<'EOF'

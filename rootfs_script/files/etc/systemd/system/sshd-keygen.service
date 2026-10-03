@@ -1,0 +1,15 @@
+[Unit]
+Description=Generate missing SSH host keys on this device
+Documentation=man:ssh-keygen(1)
+# Socket activation runs before basic.target. Avoid a dependency cycle when
+# ssh.socket requires this service, and wait for a writable root filesystem.
+DefaultDependencies=no
+After=local-fs.target
+RequiresMountsFor=/etc/ssh
+Before=ssh.service ssh.socket sshd@.service shutdown.target
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/ssh-keygen -A
