@@ -40,12 +40,18 @@ Options:
   --rootfs-image FILE  ext4 rootfs input override
   --boot-files DIR     Alias for --stage-dir
   --output FILE        Output (default: sd_MODEL.img next to this script)
-  --force              Replace an existing output
+  --force              Replace an existing image, ZIP, and checksums
   --help               Show this help
 
 The image contains a 128 MiB raw boot area, an empty 1 GiB FAT32 p1, and the
 ext4 rootfs as p2.  The target SD card needs at least 1 GiB beyond the image for
 first-boot swap expansion.
+
+After assembly, the image is also compressed as sd_MODEL_YYYYMMDD.img.zip.
+The date uses the local time zone at script startup.  The ZIP contains the
+original image filename, and its .zip.sha256 checksum uses the ZIP basename
+so it can be checked after downloading with sha256sum -c.
+With --output, the ZIP is created next to that image using its filename.
 EOF_USAGE
 }
 
@@ -108,12 +114,26 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
-for tool in realpath stat od tr blkid mktemp truncate sfdisk mkfs.vfat dd cp mv rm rmdir dirname mkdir sha256sum; do
+for tool in realpath stat od tr blkid mktemp truncate sfdisk mkfs.vfat dd cp mv rm rmdir dirname mkdir sha256sum date zip; do
     command -v "$tool" >/dev/null 2>&1 || die "required command not found: $tool"
 done
 
 stage_dir=$(realpath -m -- "$stage_dir")
 output=$(realpath -m -- "${output:-$script_dir/sd_$model.img}")
+output_dir=$(dirname -- "$output")
+output_name=${output##*/}
+release_date=$(date +%Y%m%d)
+case "$output_name" in
+    *.img) archive_name=${output_name%.img}.img_${release_date}.zip ;;
+    *) archive_name=${output_name}_${release_date}.zip ;;
+esac
+archive=$output_dir/$archive_name
+for product in "$output" "$output.sha256" "$archive" "$archive.sha256"; do
+    if [ -e "$product" ] || [ -L "$product" ]; then
+        [ -f "$product" ] || die "output is not a regular file: $product"
+        [ "$force" -eq 1 ] || die "output exists; use --force to replace it: $product"
+    fi
+done
 mkdir -p "$stage_dir"
 
 resolve_input()
@@ -141,7 +161,10 @@ copy_to_stage()
 for input in "$source_idb" "$source_uboot" "$source_kernel" "$source_resource" "$source_rootfs"; do
     [ -f "$input" ] || die "required input does not exist: $input"
     [ "$(stat -Lc %s "$input")" -gt 0 ] || die "input is empty: $input"
-    [ "$output" != "$input" ] || die "output must not overwrite an input: $input"
+    for product in "$output" "$output.sha256" "$archive" "$archive.sha256"; do
+        [ "$(realpath -m -- "$product")" != "$input" ] ||
+            die "output must not overwrite an input: $input"
+    done
 done
 
 stage_idb=$stage_dir/idb.img
@@ -172,11 +195,6 @@ for input in "$idb" "$uboot" "$kernel" "$resource" "$rootfs"; do
     [ "$output" != "$(realpath -m -- "$input")" ] || die "output must not overwrite a staged input"
 done
 
-if [ -e "$output" ]; then
-    [ -f "$output" ] || die "output is not a regular file: $output"
-    [ "$force" -eq 1 ] || die "output exists; use --force to replace it: $output"
-fi
-
 mib=$((1024 * 1024))
 idb_size=$(stat -Lc %s "$idb")
 [ "$idb_size" -ge 620 ] && [ "$idb_size" -le $((4 * mib - 64 * 512)) ] ||
@@ -196,8 +214,13 @@ p1_start=262144
 p1_sectors=2097152
 p2_start=$((p1_start + p1_sectors))
 rootfs_sectors=$((rootfs_bytes / 512))
-work=$(mktemp -d "$(dirname -- "$output")/.pomera-sd.XXXXXX")
-cleanup() { rm -f -- "$work/idb.img" "$work/p1.img" "$work/sd.img"; rmdir "$work"; }
+work=$(mktemp -d "$output_dir/.pomera-sd.XXXXXX")
+cleanup()
+{
+    rm -f -- "$work/idb.img" "$work/p1.img" "$work/sd.img" \
+        "$work/$archive_name" "$work/archive.sha256"
+    rmdir "$work"
+}
 trap cleanup EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
@@ -225,7 +248,16 @@ dd if="$work/p1.img" of="$work/sd.img" bs=1M seek=$((p1_start / 2048)) conv=notr
 dd if="$rootfs" of="$work/sd.img" bs=1M seek=$((p2_start / 2048)) conv=notrunc,sparse status=none
 mv -f -- "$work/sd.img" "$output"
 sha256sum "$output" > "$output.sha256"
+# ZIP strips the source directory and supports large images with Zip64.
+# Publish the archive only after compression and checksum generation succeed.
+echo "Compressing: $archive"
+zip -q -j "$work/$archive_name" "$output"
+(cd "$work" && sha256sum -- "$archive_name") > "$work/archive.sha256"
+mv -f -- "$work/$archive_name" "$archive"
+mv -f -- "$work/archive.sha256" "$archive.sha256"
 echo "Staged artifacts: $stage_dir"
 echo "Created: $output"
+echo "Created: $archive"
+echo "Created: $archive.sha256"
 echo "Model: $model; rootfs: $rootfs"
 echo "Use an SD card with at least 1 GiB beyond this image for firstboot swap."
