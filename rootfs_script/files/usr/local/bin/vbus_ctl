@@ -1,0 +1,65 @@
+#!/bin/sh
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
+fail()
+{
+    echo "vbus_ctl: $*" >&2
+    exit 1
+}
+
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 {on|off|status}" >&2
+    exit 2
+fi
+case $1 in
+    on|off|status) ;;
+    *) echo "Usage: $0 {on|off|status}" >&2; exit 2 ;;
+esac
+
+control=/sys/class/power_supply/USB/device/vbus_test
+keepalive=/sys/class/power_supply/USB/device/vbus_keepalive
+service=pomera-vbus.service
+[ -r "$control" ] || fail "VBUS control is unavailable; install the DM200/DM250 kernel and DTB"
+
+if [ "$1" = status ]; then
+    IFS= read -r state < "$control" || fail "cannot read VBUS state"
+    case $state in
+        0) echo off ;;
+        1) echo on ;;
+        *) fail "invalid VBUS state" ;;
+    esac
+    exit 0
+fi
+[ "$(id -u)" -eq 0 ] || fail "run as root (sudo vbus_ctl $1)"
+
+case $1 in
+    on)
+        echo "WARNING: Do NOT connect chargers, PCs or VBUS-sourcing hubs while VBUS output is enabled." >&2
+        echo "Run 'vbus_ctl off' before connecting external power; this is not electrical collision protection." >&2
+        [ -w "$keepalive" ] || fail "the kernel lacks VBUS keepalive support; update the kernel"
+        # Do not take over a raw manual test. Concurrent service starts are
+        # serialized by systemd, and start waits for successful enumeration.
+        IFS= read -r state < "$control" || fail "cannot read VBUS state"
+        if [ "$state" = 1 ] && ! systemctl is-active --quiet "$service"; then
+            fail "VBUS is already enabled manually; run vbus_ctl off first"
+        fi
+        systemctl start "$service" ||
+            fail "ON failed (external power, USB recognition or service error); see journalctl -u $service"
+        IFS= read -r state < "$control" || fail "cannot read VBUS state after start"
+        [ "$state" = 1 ] ||
+            fail "VBUS is not enabled; run vbus_ctl off before trying on again"
+        echo "VBUS on (USB device recognized; automatic OFF on disconnect)"
+        ;;
+    off)
+        result=0
+        systemctl stop "$service" || result=1
+        # Also stop a raw manual test or a service which was interrupted.
+        printf '0\n' > "$control" || fail "VBUS OFF failed"
+        IFS= read -r state < "$control" || fail "cannot read VBUS state"
+        [ "$state" = 0 ] || fail "VBUS is still enabled"
+        echo "VBUS off"
+        exit "$result"
+        ;;
+esac

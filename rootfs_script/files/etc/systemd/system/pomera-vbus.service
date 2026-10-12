@@ -1,0 +1,14 @@
+[Unit]
+Description=Pomera VBUS output with USB device monitoring
+# Explicitly started by vbus_ctl, never at boot or automatically after resume.
+Before=sleep.target
+Conflicts=sleep.target
+
+[Service]
+Type=notify
+NotifyAccess=all
+ExecStart=/usr/local/sbin/pomera-vbus-watch watch
+ExecStopPost=/usr/local/sbin/pomera-vbus-watch stop
+TimeoutStartSec=15s
+TimeoutStopSec=5s
+Restart=no

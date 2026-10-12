@@ -1,0 +1,103 @@
+#!/bin/sh
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
+control=/sys/class/power_supply/USB/device/vbus_test
+keepalive=/sys/class/power_supply/USB/device/vbus_keepalive
+controller=/sys/bus/platform/devices/10180000.usb
+driver=/sys/bus/platform/drivers/dwc2
+
+stop_output()
+{
+    if [ -e "$control" ]; then
+        printf '0\n' > "$control"
+    fi
+}
+
+start_output()
+{
+    # This kernel write checks external VBUS and pauses charging atomically
+    # with respect to other VBUS requests. It grants only a ten-second lease.
+    printf '10\n' > "$control"
+}
+
+renew_output()
+{
+    printf '30\n' > "$keepalive"
+}
+
+notify_ready()
+{
+    systemd-notify --ready --status="VBUS on; monitoring USB disconnect"
+}
+
+output_enabled()
+{
+    IFS= read -r state < "$control" && [ "$state" = 1 ]
+}
+
+host_enabled()
+{
+    # usb_host off unbinds DWC2. Check the binding as well as device files so
+    # stale enumeration cannot keep the output on after host mode is stopped.
+    [ -L "$controller/driver" ] &&
+        [ "$(readlink -f "$controller/driver")" = "$driver" ]
+}
+
+device_connected()
+{
+    host_enabled || return 1
+    # Only configured devices on this external controller count. Ignore the
+    # root hub, USB interfaces, other controllers and mere idle data traffic.
+    for device in "$controller"/usb*/[0-9]*-[0-9]*; do
+        [ -r "$device/idVendor" ] && [ -r "$device/bConfigurationValue" ] || continue
+        IFS= read -r configuration < "$device/bConfigurationValue" || continue
+        case $configuration in
+            ''|0|*[!0-9]*) continue ;;
+        esac
+        return 0
+    done
+    return 1
+}
+
+watch()
+{
+    [ -w "$control" ] && [ -w "$keepalive" ] || {
+        echo "VBUS keepalive is unavailable; update the DM200/DM250 kernel" >&2
+        return 1
+    }
+    /usr/local/bin/usb_host on
+    start_output
+    # Stop on all ordinary exits; ExecStopPost also covers SIGKILL/start errors.
+    trap stop_output EXIT
+    trap 'exit 0' HUP INT TERM
+
+    attempt=0
+    while ! device_connected; do
+        host_enabled && output_enabled || return 1
+        if [ "$attempt" -ge 50 ]; then
+            echo "No USB device recognized within five seconds; VBUS off" >&2
+            return 1
+        fi
+        sleep 0.1
+        attempt=$((attempt + 1))
+    done
+    output_enabled && renew_output || return 1
+    notify_ready
+
+    # Healthy monitoring can renew indefinitely; each kernel lease is bounded.
+    while sleep 0.5; do
+        if ! output_enabled || ! device_connected; then
+            echo "USB disconnected, host stopped or VBUS stopped; VBUS off"
+            return 0
+        fi
+        renew_output || return 1
+    done
+}
+
+case ${1:-} in
+    watch) watch ;;
+    stop) stop_output ;;
+    *) echo "Usage: $0 {watch|stop}" >&2; exit 2 ;;
+esac
