@@ -1,5 +1,7 @@
 # Pomera DM200 / DM250 / DM250US tools
 
+日本語 | [English](readme.en.md)
+
 PomeraでLinuxをSDから起動するためのビルド・イメージ作成ツールです。
 Linux / U-Bootは別リポジトリから取得し、このリポジトリでrootfsとSDイメージを作成します。
 
@@ -24,7 +26,8 @@ rootfs作成とext4イメージ作成はホスト上でroot権限を使います
 ## 1. Linux / U-Bootのビルド
 
 ```sh
-./kernel/docker_builder.sh
+cd kernel
+./docker_builder.sh
 ```
 
 初回はLinuxとU-Bootをcloneし、既存のcloneは同じbranchのremoteへfast-forwardで更新します。
@@ -83,7 +86,7 @@ sudo ./make_rootfs.sh --distro ubuntu --suite 26.04
 sudo ./make_rootfs_image.sh dm250
 ```
 
-`rootfs`を元に、`kernel/linux/modules_dm250.tar.gz`のmodulesを組み込んだ
+2の手順で作成した`rootfs`を元に、`kernel/linux/modules_dm250.tar.gz`のmodulesを組み込んだ
 `rootfs_dm250.img`と`.sha256`を生成します。
 元のrootfsディレクトリは共通のままで、機種別modulesは生成イメージへ反映されます。
 対応するkernelのmodules archiveを先にビルドしておいてください。
@@ -100,7 +103,7 @@ sudo ./make_rootfs_image.sh dm250 --rootfs rootfs-ubuntu-resolute
 
 ```sh
 cd idb
-sh ./make_idb.sh
+./make_idb.sh
 ```
 
 必要な`dm200_uboot`と`rkbin`を未取得時だけcloneし、`idb.img`を生成します。
@@ -114,7 +117,6 @@ cd sd_image
 sh ./make_sd_boot_image.sh dm250
 ```
 
-IDB、機種別U-Boot、kernel、resource、rootfsを上記で作成したところから取得し、
-`sd_image/dm250/`へコピーしてから`sd_dm250.img`という名前でSDイメージに結合します。
+4の手順までで作成したIDB、機種別U-Boot、kernel、resource、rootfsを取得し、
+`sd_image/dm250/`へコピーしてから`sd_dm250.img`という名前でSDイメージとして結合します。
 
-各スクリプトのオプションは`--help`を参照してください。
