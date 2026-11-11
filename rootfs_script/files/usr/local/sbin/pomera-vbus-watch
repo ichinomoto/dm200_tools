@@ -3,8 +3,21 @@ set -eu
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
-control=/sys/class/power_supply/USB/device/vbus_test
-keepalive=/sys/class/power_supply/USB/device/vbus_keepalive
+fail()
+{
+    echo "pomera-vbus-watch: $*" >&2
+    exit 1
+}
+
+control=
+for device in /sys/class/power_supply/USB/device \
+              /sys/class/power_supply/bq256xx-charger/device; do
+    [ -e "$device/vbus_test" ] || continue
+    [ -z "$control" ] || fail "multiple supported VBUS controls are present"
+    control=$device/vbus_test
+done
+[ -n "$control" ] || fail "VBUS control is unavailable; install a supported kernel and DTB"
+keepalive=${control%/*}/vbus_keepalive
 controller=/sys/bus/platform/devices/10180000.usb
 driver=/sys/bus/platform/drivers/dwc2
 
@@ -17,8 +30,8 @@ stop_output()
 
 start_output()
 {
-    # This kernel write checks external VBUS and pauses charging atomically
-    # with respect to other VBUS requests. It grants only a ten-second lease.
+    # The kernel driver checks external power and sequences its own PMIC.
+    # This write grants only a ten-second lease.
     printf '10\n' > "$control"
 }
 
@@ -64,7 +77,7 @@ device_connected()
 watch()
 {
     [ -w "$control" ] && [ -w "$keepalive" ] || {
-        echo "VBUS keepalive is unavailable; update the DM200/DM250 kernel" >&2
+        echo "VBUS keepalive is unavailable; update the kernel" >&2
         return 1
     }
     /usr/local/bin/usb_host on

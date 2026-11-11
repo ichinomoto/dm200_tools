@@ -18,10 +18,17 @@ case $1 in
     *) echo "Usage: $0 {on|off|status}" >&2; exit 2 ;;
 esac
 
-control=/sys/class/power_supply/USB/device/vbus_test
-keepalive=/sys/class/power_supply/USB/device/vbus_keepalive
+control=
+for device in /sys/class/power_supply/USB/device \
+              /sys/class/power_supply/bq256xx-charger/device; do
+    [ -e "$device/vbus_test" ] || continue
+    [ -z "$control" ] || fail "multiple supported VBUS controls are present"
+    control=$device/vbus_test
+done
+[ -n "$control" ] || fail "VBUS control is unavailable; install a supported kernel and DTB"
+keepalive=${control%/*}/vbus_keepalive
 service=pomera-vbus.service
-[ -r "$control" ] || fail "VBUS control is unavailable; install the DM200/DM250 kernel and DTB"
+[ -r "$control" ] || fail "cannot read VBUS control"
 
 if [ "$1" = status ]; then
     IFS= read -r state < "$control" || fail "cannot read VBUS state"
