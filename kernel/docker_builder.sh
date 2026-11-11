@@ -43,7 +43,7 @@ esac
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 REPOSITORY=${POMERA_LINUX_REPOSITORY:-https://github.com/ichinomoto/linux}
-BRANCH=${POMERA_LINUX_BRANCH:-pomera/linux-6.18.y}
+BRANCH=${POMERA_LINUX_BRANCH:-pomera/linux-6.18.63}
 LINUX_DIR=${POMERA_LINUX_DIR:-$SCRIPT_DIR/linux}
 UBOOT_REPOSITORY=${POMERA_UBOOT_REPOSITORY:-https://github.com/ichinomoto/u-boot}
 UBOOT_BRANCH=${POMERA_UBOOT_BRANCH:-pomera/v2026.07}
